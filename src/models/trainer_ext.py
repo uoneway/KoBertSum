@@ -240,6 +240,7 @@ class Trainer(object):
 
                         gold = []
                         pred = []
+                        pred_idx = []
 
                         if (cal_lead):
                             selected_ids = [list(range(batch.clss.size(1)))] * batch.batch_size
@@ -260,6 +261,7 @@ class Trainer(object):
                         # selected_ids = np.sort(selected_ids,1)
                         for i, idx in enumerate(selected_ids):
                             _pred = []
+                            _pred_idx = []
                             if (len(batch.src_str[i]) == 0):
                                 continue
                             for j in selected_ids[i][:len(batch.src_str[i])]:
@@ -269,8 +271,10 @@ class Trainer(object):
                                 if (self.args.block_trigram):
                                     if (not _block_tri(candidate, _pred)):
                                         _pred.append(candidate)
+                                        _pred_idx.append(j)
                                 else:
                                     _pred.append(candidate)
+                                    _pred_idx.append(j)
 
                                 if ((not cal_oracle) and (not self.args.recall_eval) and len(_pred) == 3):
                                     break
@@ -280,12 +284,13 @@ class Trainer(object):
                                 _pred = ' '.join(_pred.split()[:len(batch.tgt_str[i].split())])
 
                             pred.append(_pred)
+                            pred_idx.append(_pred_idx)
                             gold.append(batch.tgt_str[i])
 
                         for i in range(len(gold)):
                             save_gold.write(gold[i].strip() + '\n')
                         for i in range(len(pred)):
-                            save_pred.write(pred[i].strip() + '\n')
+                            save_pred.write(str(i) + pred[i].strip() + str(pred_idx[i]) '\n')
         if (step != -1 and self.args.report_rouge):
             rouges = test_rouge(self.args.temp_dir, can_path, gold_path)
             logger.info('Rouges at step %d \n%s' % (step, rouge_results_to_str(rouges)))
