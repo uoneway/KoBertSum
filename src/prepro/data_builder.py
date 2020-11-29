@@ -14,7 +14,8 @@ import torch
 from multiprocess import Pool
 
 from others.logging import logger
-from others.tokenization import BertTokenizer
+#from others.tokenization import BertTokenizer
+from others.tokenization_kobert import KoBertTokenizer
 from transformers import XLNetTokenizer
 
 from others.utils import clean
@@ -207,7 +208,7 @@ def hashhex(s):
 class BertData():
     def __init__(self, args):
         self.args = args
-        self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
+        self.tokenizer = KoBertTokenizer.from_pretrained("monologg/kobert", do_lower_case=True)
 
         self.sep_token = '[SEP]'
         self.cls_token = '[CLS]'
@@ -215,9 +216,9 @@ class BertData():
         self.tgt_bos = '[unused0]'
         self.tgt_eos = '[unused1]'
         self.tgt_sent_split = '[unused2]'
-        self.sep_vid = self.tokenizer.vocab[self.sep_token]
-        self.cls_vid = self.tokenizer.vocab[self.cls_token]
-        self.pad_vid = self.tokenizer.vocab[self.pad_token]
+        self.sep_vid = self.tokenizer.token2idx[self.sep_token]
+        self.cls_vid = self.tokenizer.token2idx[self.cls_token]
+        self.pad_vid = self.tokenizer.token2idx[self.pad_token]
 
     def preprocess(self, src, tgt, sent_labels, use_bert_basic_tokenizer=False, is_test=False):
 
@@ -259,7 +260,7 @@ class BertData():
         sent_labels = sent_labels[:len(cls_ids)]
 
         tgt_subtokens_str = '[unused0] ' + ' [unused2] '.join(
-            [' '.join(self.tokenizer.tokenize(' '.join(tt), use_bert_basic_tokenizer=use_bert_basic_tokenizer)) for tt in tgt]) + ' [unused1]'
+            [' '.join(self.tokenizer.tokenize(' '.join(tt))) for tt in tgt]) + ' [unused1]'
         tgt_subtoken = tgt_subtokens_str.split()[:self.args.max_tgt_ntokens]
         if ((not is_test) and len(tgt_subtoken) < self.args.min_tgt_ntokens):
             return None

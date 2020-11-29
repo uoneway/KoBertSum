@@ -118,17 +118,19 @@ class Bert(nn.Module):
         if(large):
             self.model = BertModel.from_pretrained('bert-large-uncased', cache_dir=temp_dir)
         else:
-            self.model = BertModel.from_pretrained('bert-base-uncased', cache_dir=temp_dir)
+            self.model = BertModel.from_pretrained("monologg/kobert", cache_dir=temp_dir)
 
         self.finetune = finetune
 
     def forward(self, x, segs, mask):
         if(self.finetune):
             top_vec, _ = self.model(x, token_type_ids=segs, attention_mask=mask)
+            #print(last_hiddens, last_pooling_hiddens, hiddens)
+            #top_vec = hiddens[-1]
         else:
             self.eval()
             with torch.no_grad():
-                top_vec, _ = self.model(x, token_type_ids=segs, attention_mask=mask)
+                top_vec, _ = self.model(x, segs, attention_mask=mask)
         return top_vec
 
 
