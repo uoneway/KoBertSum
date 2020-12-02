@@ -3,3 +3,4 @@ data/
 tmp/
 logs/
 __pycache__
+temp/
