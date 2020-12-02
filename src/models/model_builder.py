@@ -130,7 +130,7 @@ class Bert(nn.Module):
         else:
             self.eval()
             with torch.no_grad():
-                top_vec, _ = self.model(x, segs, attention_mask=mask)
+                top_vec, _ = self.model(x, token_type_ids=segs, attention_mask=mask)
         return top_vec
 
 

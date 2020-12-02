@@ -278,6 +278,11 @@ class Trainer(object):
 
                                 if ((not cal_oracle) and (not self.args.recall_eval) and len(_pred) == 3):
                                     break
+                            
+                            if len(_pred) < 3:
+                                #print('selected_ids: ', selected_ids)
+                                print('batch.src_str[i]: ', batch.src_str[i])
+                                print('selected_ids[i]: ', selected_ids[i])
 
                             _pred = '<q>'.join(_pred)
                             if (self.args.recall_eval):
