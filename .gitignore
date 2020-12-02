@@ -4,3 +4,4 @@ tmp/
 logs/
 __pycache__
 temp/
+models/
