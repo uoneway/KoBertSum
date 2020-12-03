@@ -8,6 +8,7 @@ BERT_DATA_DIR = DATA_DIR + '/bert_data'
 LOG_FILE = PROJECT_DIR + '/logs/preprocessing.log' # logs -> for storing logs information during preprocess and finetuning
 MODEL_DIR = PROJECT_DIR + '/models'  
 
+# python make_bert_data.py train
 if __name__ == '__main__':
     # parser = argparse.ArgumentParser()
     # parser.add_argument("-task", default='train', type=str, choices=['train', 'test'])
@@ -22,11 +23,11 @@ if __name__ == '__main__':
         os.system(f"python preprocess.py \
                 -mode format_to_bert -dataset train \
                 -raw_path {JSON_DATA_DIR}/train_abs -save_path {BERT_DATA_DIR}/train_abs -log_file {LOG_FILE} \
-                -lower -n_cpus 1 ")
+                -lower -n_cpus 8 ")
     elif sys.argv[1] == 'test':
         pass
         # !python preprocess.py \
         #     -mode format_to_bert -dataset test \
         #     -raw_path $JSON_DATA_DIR -save_path $BERT_DATA_DIR -log_file $LOG_FILE \
-        #     -lower -n_cpus 1 
+        #     -lower -n_cpus 8
                         

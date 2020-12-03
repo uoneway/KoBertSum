@@ -1,6 +1,7 @@
 import os
 import sys
 
+
 PROJECT_DIR = '/home/uoneway/Project/PreSumm_ko'
 
 os.chdir(PROJECT_DIR)
@@ -75,3 +76,5 @@ cd mecab-python-0.996
 python3 setup.py build
 python3 setup.py install
 """)
+
+# pip install mecab-python3

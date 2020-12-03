@@ -259,14 +259,21 @@ class BertData():
         cls_ids = [i for i, t in enumerate(src_subtoken_idxs) if t == self.cls_vid]
         sent_labels = sent_labels[:len(cls_ids)]
 
+        # kobert transforemrs에 연결되어 있는 transforemrs tokenizer 사용
         tgt_subtokens_str = '[unused0] ' + ' [unused2] '.join(
             [' '.join(self.tokenizer.tokenize(' '.join(tt))) for tt in tgt]) + ' [unused1]'
+        ## presumm tokenizer 사용
+        # """Runs basic tokenization (punctuation splitting, lower casing, etc.)."""
+        # tgt_subtokens_str = '[unused0] ' + ' [unused2] '.join(
+        #     [' '.join(self.tokenizer.tokenize(' '.join(tt), use_bert_basic_tokenizer=use_bert_basic_tokenizer)) for tt in tgt]) + ' [unused1]'
+
+
         tgt_subtoken = tgt_subtokens_str.split()[:self.args.max_tgt_ntokens]
         if ((not is_test) and len(tgt_subtoken) < self.args.min_tgt_ntokens):
             return None
-
         tgt_subtoken_idxs = self.tokenizer.convert_tokens_to_ids(tgt_subtoken)
-
+        print(tgt_subtoken)
+        #print(tgt_subtoken_idxs)
         tgt_txt = '<q>'.join([' '.join(tt) for tt in tgt])
         src_txt = [original_src_txt[i] for i in idxs]
 

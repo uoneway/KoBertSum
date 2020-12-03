@@ -129,7 +129,9 @@ def create_json_files(df, type, target_summary_sent='abs', path=''):
         
         json_list = []
         for _, row in df.iloc[start_idx:end_idx].iterrows():
-            original_sents_list = [preprocessing(original_sent, korean_tokenizer).split()
+            # original_sents_list = [preprocessing(original_sent, korean_tokenizer).split()
+            #                         for original_sent in row['article_original']]
+            original_sents_list = [preprocessing(original_sent).split()
                                     for original_sent in row['article_original']]
 
             if target_summary_sent == 'ext':
@@ -137,7 +139,9 @@ def create_json_files(df, type, target_summary_sent='abs', path=''):
             elif target_summary_sent == 'abs':
                 summary_sents = korean_sent_spliter(row['abstractive'])   
 
-            summary_sents_list = [preprocessing(original_sent, korean_tokenizer).split()
+            # summary_sents_list = [preprocessing(original_sent, korean_tokenizer).split()
+            #                         for original_sent in summary_sents] if type == 'train' else []
+            summary_sents_list = [preprocessing(original_sent).split()
                                     for original_sent in summary_sents] if type == 'train' else []
 
             json_list.append({'src': original_sents_list,
@@ -164,8 +168,13 @@ if __name__ == '__main__':
             line = json.loads(json_str)
             trains.append(line)
 
-        train_df = pd.DataFrame(trains)
+        # randomly split
+        df = pd.DataFrame(trains)
+        train_df = df.sample(frac=0.95,random_state=42) #random state is a seed value
+        dev_df = df.drop(train_df.index)
+
         train_df['extractive_sents'] = train_df.apply(lambda row: list(np.array(row['article_original'])[row['extractive']]) , axis=1)
+
         create_json_files(train_df, type='train', target_summary_sent=sys.argv[2], path=JSON_DATA_DIR)
 
     elif sys.argv[1] == 'test':
