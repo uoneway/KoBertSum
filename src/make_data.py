@@ -80,7 +80,7 @@ def noise_remove(text):
     
     return text
 
-def preprocessing(text, tokenizer=korean_tokenizer):
+def preprocessing(text, tokenizer=None):
     text_p = noise_remove(text)
     if tokenizer is not None:
         text_p = tokenizer(text_p)
@@ -129,20 +129,20 @@ def create_json_files(df, type, target_summary_sent='abs', path=''):
         
         json_list = []
         for _, row in df.iloc[start_idx:end_idx].iterrows():
-            # original_sents_list = [preprocessing(original_sent, korean_tokenizer).split()
-            #                         for original_sent in row['article_original']]
-            original_sents_list = [preprocessing(original_sent).split()
+            original_sents_list = [preprocessing(original_sent, korean_tokenizer).split()
                                     for original_sent in row['article_original']]
+            # original_sents_list = [preprocessing(original_sent).split()
+            #                         for original_sent in row['article_original']]
 
             if target_summary_sent == 'ext':
                 summary_sents = row['extractive_sents']
             elif target_summary_sent == 'abs':
                 summary_sents = korean_sent_spliter(row['abstractive'])   
 
-            # summary_sents_list = [preprocessing(original_sent, korean_tokenizer).split()
-            #                         for original_sent in summary_sents] if type == 'train' else []
-            summary_sents_list = [preprocessing(original_sent).split()
+            summary_sents_list = [preprocessing(original_sent, korean_tokenizer).split()
                                     for original_sent in summary_sents] if type == 'train' else []
+            # summary_sents_list = [preprocessing(original_sent).split()
+            #                         for original_sent in summary_sents] if type == 'train' else []
 
             json_list.append({'src': original_sents_list,
                               'tgt': summary_sents_list
@@ -159,7 +159,8 @@ def create_json_files(df, type, target_summary_sent='abs', path=''):
 # python make_json_data.py train abs
 if __name__ == '__main__':
 
-    if sys.argv[1] == 'train':
+    if sys.argv[1] == 'train': # valid
+        ## make json file
         with open(RAW_DATA_DIR + '/ext/train.jsonl', 'r') as json_file:
             json_list = list(json_file)
 
@@ -168,14 +169,31 @@ if __name__ == '__main__':
             line = json.loads(json_str)
             trains.append(line)
 
-        # randomly split
         df = pd.DataFrame(trains)
-        train_df = df.sample(frac=0.95,random_state=42) #random state is a seed value
-        dev_df = df.drop(train_df.index)
+        df['extractive_sents'] = df.apply(lambda row: list(np.array(row['article_original'])[row['extractive']]) , axis=1)
 
-        train_df['extractive_sents'] = train_df.apply(lambda row: list(np.array(row['article_original'])[row['extractive']]) , axis=1)
+        # randomly split
+        train_df = df.sample(frac=0.95,random_state=42) #random state is a seed value
+        valid_df = df.drop(train_df.index)
+        train_df.reset_index(inplace=True, drop=True)
+        valid_df.reset_index(inplace=True, drop=True)
 
         create_json_files(train_df, type='train', target_summary_sent=sys.argv[2], path=JSON_DATA_DIR)
+        create_json_files(valid_df, type='valid', target_summary_sent=sys.argv[2], path=JSON_DATA_DIR)
+
+        
+        ## make bert data
+        
+        # 동일한 파일명 존재하면 덮어쓰는게 아니라 넘어감
+        os.system(f"python preprocess.py \
+                -mode format_to_bert -dataset train\
+                -raw_path {JSON_DATA_DIR}/train_{sys.argv[2]} -save_path {BERT_DATA_DIR}/train_{sys.argv[2]} -log_file {LOG_FILE} \
+                -lower -n_cpus 24")
+        os.system(f"python preprocess.py \
+                -mode format_to_bert -dataset valid \
+                -raw_path {JSON_DATA_DIR}/valid_{sys.argv[2]} -save_path {BERT_DATA_DIR}/valid_{sys.argv[2]} -log_file {LOG_FILE} \
+                -lower -n_cpus 24")
+
 
     elif sys.argv[1] == 'test':
         with open(RAW_DATA_DIR + '/ext/extractive_test_v2.jsonl', 'r') as json_file:
@@ -188,4 +206,10 @@ if __name__ == '__main__':
 
         test_df = pd.DataFrame(tests)
         create_json_files(test_df, type='test', path=JSON_DATA_DIR)
+
+
+        # !python preprocess.py \
+        #     -mode format_to_bert -dataset test \
+        #     -raw_path $JSON_DATA_DIR -save_path $BERT_DATA_DIR -log_file $LOG_FILE \
+        #     -lower -n_cpus 8
                         
