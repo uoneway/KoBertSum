@@ -8,6 +8,8 @@ import json
 import numpy as np 
 import pandas as pd
 from tqdm import tqdm
+import argparse
+import pickle
 
 PROJECT_DIR = '/home/uoneway/Project/PreSumm_ko'
 DATA_DIR = PROJECT_DIR + '/data'
@@ -17,18 +19,22 @@ BERT_DATA_DIR = DATA_DIR + '/bert_data'
 MODEL_DIR = PROJECT_DIR + '/models'  
 LOG_FILE = PROJECT_DIR + '/logs/preprocessing.log' # logs -> for storing logs information during preprocess and finetuning
 
-def korean_tokenizer(text, use_tags=None, print_tag=False): 
+
+# special_symbols_in_dict = ['!', '"', '#', '$', '%', '&', "'", '(', ')', '*', '+', ',', '-']
+# unused_tags = ['SF', 'SE', 'SSO', 'SSC', 'SC', 'SY']
+def korean_tokenizer(text, unused_tags=None, print_tag=False): 
+    # assert if use_tags is None or unuse_tags is None
+    
     tokenizer = MeCab.Tagger("-d /usr/local/lib/mecab/dic/mecab-ko-dic")
     parsed = tokenizer.parse(text)
     word_tag = [w for w in parsed.split("\n")]
     result = []
     
-    if use_tags:
+    if unused_tags:
         for word_ in word_tag[:-2]:
             word = word_.split("\t")
             tag = word[1].split(",")[0]
-
-            if(tag in use_tags):     
+            if tag not in unused_tags:
                 if print_tag:
                     result.append((word[0], tag))
                 else:
@@ -81,12 +87,12 @@ def noise_remove(text):
     return text
 
 def preprocessing(text, tokenizer=None):
-    text_p = noise_remove(text)
+    text = noise_remove(text)
     if tokenizer is not None:
-        text_p = tokenizer(text_p)
-        text_p = ' '.join(text_p)
+        text = tokenizer(text)
+        text = ' '.join(text)
 
-    return text_p
+    return text
 
 def korean_sent_spliter(doc):
     sents_splited = kss.split_sentences(doc)
@@ -111,7 +117,7 @@ def korean_sent_spliter(doc):
         return sents_splited
 
 
-def create_json_files(df, type, target_summary_sent='abs', path=''):
+def create_json_files(df, data_type='train', target_summary_sent=None, path=''):
     NUM_DOCS_IN_ONE_FILE = 1000
     start_idx_list = list(range(0, len(df), NUM_DOCS_IN_ONE_FILE))
 
@@ -125,24 +131,25 @@ def create_json_files(df, type, target_summary_sent='abs', path=''):
         start_idx_str = (length - len(str(start_idx)))*'0' + str(start_idx)
         end_idx_str = (length - len(str(end_idx-1)))*'0' + str(end_idx-1)
 
-        file_name = os.path.join(f'{path}/{type}_abs',f"{type}.{start_idx_str}_{end_idx_str}.json")
+        file_name = os.path.join(f'{path}/{data_type}_{target_summary_sent}' \
+                                + f'/{data_type}.{start_idx_str}_{end_idx_str}.json')
         
         json_list = []
-        for _, row in df.iloc[start_idx:end_idx].iterrows():
+        for i, row in df.iloc[start_idx:end_idx].iterrows():
             original_sents_list = [preprocessing(original_sent, korean_tokenizer).split()
                                     for original_sent in row['article_original']]
             # original_sents_list = [preprocessing(original_sent).split()
             #                         for original_sent in row['article_original']]
 
-            if target_summary_sent == 'ext':
-                summary_sents = row['extractive_sents']
-            elif target_summary_sent == 'abs':
-                summary_sents = korean_sent_spliter(row['abstractive'])   
-
-            summary_sents_list = [preprocessing(original_sent, korean_tokenizer).split()
-                                    for original_sent in summary_sents] if type == 'train' else []
-            # summary_sents_list = [preprocessing(original_sent).split()
-            #                         for original_sent in summary_sents] if type == 'train' else []
+            if target_summary_sent is not None:
+                if target_summary_sent == 'ext':
+                    summary_sents = row['extractive_sents']
+                elif target_summary_sent == 'abs':
+                    summary_sents = korean_sent_spliter(row['abstractive'])   
+                summary_sents_list = [preprocessing(original_sent, korean_tokenizer).split()
+                                        for original_sent in summary_sents]
+                # summary_sents_list = [preprocessing(original_sent).split()
+                #                         for original_sent in summary_sents] if type == 'train' else []
 
             json_list.append({'src': original_sents_list,
                               'tgt': summary_sents_list
@@ -156,12 +163,20 @@ def create_json_files(df, type, target_summary_sent='abs', path=''):
             json_file.write(json_string)
 
 
-# python make_json_data.py train abs
-if __name__ == '__main__':
 
-    if sys.argv[1] == 'train': # valid
-        ## make json file
-        with open(RAW_DATA_DIR + '/ext/train.jsonl', 'r') as json_file:
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-make", default=None, type=str) #, choices=['data', 'train', 'test'])
+    parser.add_argument("-by", default=None, type=str)
+    parser.add_argument("-target_summary_sent", default='abs', type=str)
+
+    
+    args = parser.parse_args()
+    TASK = 'ext'
+
+    # python make_data.py -make train_df
+    if args.make == 'train_df': # valid_df
+        with open(f"{RAW_DATA_DIR}/{TASK}/train.jsonl", 'r') as json_file:
             json_list = list(json_file)
 
         trains = []
@@ -178,38 +193,61 @@ if __name__ == '__main__':
         train_df.reset_index(inplace=True, drop=True)
         valid_df.reset_index(inplace=True, drop=True)
 
-        create_json_files(train_df, type='train', target_summary_sent=sys.argv[2], path=JSON_DATA_DIR)
-        create_json_files(valid_df, type='valid', target_summary_sent=sys.argv[2], path=JSON_DATA_DIR)
+        train_df.to_pickle(f"{RAW_DATA_DIR}/{TASK}/train_df.pickle")
+        valid_df.to_pickle(f"{RAW_DATA_DIR}/{TASK}/valid_df.pickle")
+        print(f'train_df({len(train_df)}) is exported')
+        print(f'valid_df({len(valid_df)}) is exported')
 
-        
+    # python make_data.py -make train -by abs
+    elif args.make  == 'train': # valid
+        train_df = pd.read_pickle(f"{RAW_DATA_DIR}/{TASK}/train_df.pickle")
+        valid_df = pd.read_pickle(f"{RAW_DATA_DIR}/{TASK}/valid_df.pickle")
+
+        # make json file
+        create_json_files(train_df, data_type='train', target_summary_sent=args.by, path=JSON_DATA_DIR)
+        create_json_files(valid_df, data_type='valid',  target_summary_sent=args.by, path=f'{JSON_DATA_DIR}/valid_{args.by}')
+ 
         ## make bert data
-        
         # 동일한 파일명 존재하면 덮어쓰는게 아니라 넘어감
         os.system(f"python preprocess.py \
                 -mode format_to_bert -dataset train\
-                -raw_path {JSON_DATA_DIR}/train_{sys.argv[2]} -save_path {BERT_DATA_DIR}/train_{sys.argv[2]} -log_file {LOG_FILE} \
+                -raw_path {JSON_DATA_DIR}/train_{args.by} -save_path {BERT_DATA_DIR}/train_{args.by} -log_file {LOG_FILE} \
                 -lower -n_cpus 24")
         os.system(f"python preprocess.py \
                 -mode format_to_bert -dataset valid \
-                -raw_path {JSON_DATA_DIR}/valid_{sys.argv[2]} -save_path {BERT_DATA_DIR}/valid_{sys.argv[2]} -log_file {LOG_FILE} \
+                -raw_path {JSON_DATA_DIR}/valid_{args.by} -save_path {BERT_DATA_DIR}/valid_{args.by} -log_file {LOG_FILE} \
                 -lower -n_cpus 24")
 
+    elif args.make  == 'test_prepro': # valid
+        train_df = pd.read_csv(f"{RAW_DATA_DIR}/{TASK}/train_df.csv")[:10]
+        # train_df['article_original_prepro'] = train_df['article_original'].apply(lambda sent_list: [sent_list])
+        # train_df['article_original_prepro_mecab'] = train_df['article_original'].apply(lambda sent_list:  
+        
+        # train_df.to_csv(f"{RAW_DATA_DIR}/temp/train_df.csv", index=False, encoding="utf-8-sig")
+        # original_sents_list_simple = [preprocessing(original_sent)
+        #                         for original_sent in row['article_original']]
+        # print(original_sents_list_simple)
+        # original_sents_list_mecab = [preprocessing(original_sent, korean_tokenizer).split()
+        #                         for original_sent in row['article_original']]
+        # print(list(zip(original_sents_list_simple, original_sents_list_mecab)))
 
-    elif sys.argv[1] == 'test':
-        with open(RAW_DATA_DIR + '/ext/extractive_test_v2.jsonl', 'r') as json_file:
-            json_list = list(json_file)
 
-        tests = []
-        for json_str in json_list:
-            line = json.loads(json_str)
-            tests.append(line)
 
-        test_df = pd.DataFrame(tests)
-        create_json_files(test_df, type='test', path=JSON_DATA_DIR)
+
+    # elif args.make == 'test':
+    #     with open(RAW_DATA_DIR + '/ext/extractive_test_v2.jsonl', 'r') as json_file:
+    #         json_list = list(json_file)
+
+    #     tests = []
+    #     for json_str in json_list:
+    #         line = json.loads(json_str)
+    #         tests.append(line)
+
+    #     test_df = pd.DataFrame(tests)
+    #     create_json_files(test_df, type='test', path=JSON_DATA_DIR)
 
 
         # !python preprocess.py \
         #     -mode format_to_bert -dataset test \
         #     -raw_path $JSON_DATA_DIR -save_path $BERT_DATA_DIR -log_file $LOG_FILE \
         #     -lower -n_cpus 8
-                        
