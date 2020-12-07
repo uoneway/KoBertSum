@@ -215,8 +215,8 @@ class BertData():
         self.sep_token = '[SEP]'
         self.cls_token = '[CLS]'
         self.pad_token = '[PAD]'
-        self.tgt_bos = '[' # '[unused0]'   204; 314[ 315]
-        self.tgt_eos = ']' # '[unused1]'
+        self.tgt_bos = '¶' # '[unused0]'   204; 314[ 315]
+        self.tgt_eos = '----------------' # '[unused1]'
         self.tgt_sent_split = ';' #'[unused2]'
         self.sep_vid = self.tokenizer.token2idx[self.sep_token]
         self.cls_vid = self.tokenizer.token2idx[self.cls_token]
@@ -275,13 +275,13 @@ class BertData():
         if ((not is_test) and len(tgt_subtoken) < self.args.min_tgt_ntokens):
             return None
         tgt_subtoken_idxs = self.tokenizer.convert_tokens_to_ids(tgt_subtoken)
-        # print(tgt_subtoken)
-        # print(tgt_subtoken_idxs)
+        print(tgt_subtoken)
+        print(tgt_subtoken_idxs)
         tgt_txt = '<q>'.join([' '.join(tt) for tt in tgt])
         src_txt = [original_src_txt[i] for i in idxs]
 
-        BertData.used_subtoken_idxs.update(src_subtoken_idxs)
-        BertData.used_subtoken_idxs.update(tgt_subtoken_idxs)
+        # BertData.used_subtoken_idxs.update(src_subtoken_idxs)
+        # BertData.used_subtoken_idxs.update(tgt_subtoken_idxs)
 
         return src_subtoken_idxs, sent_labels, tgt_subtoken_idxs, segments_ids, cls_ids, src_txt, tgt_txt
 

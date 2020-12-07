@@ -75,8 +75,8 @@ class Translator(object):
         self.tensorboard_writer = SummaryWriter(tensorboard_log_dir, comment="Unmt")
 
         # 추가
-        self.tgt_bos = '[' # '[unused0]'   204; 314[ 315]
-        self.tgt_eos = ']' # '[unused1]'
+        self.tgt_bos = '¶' # '[unused0]'   204; 314[ 315]
+        self.tgt_eos = '----------------' # '[unused1]'
         self.tgt_sent_split = ';' #'[unused2]'
 
 
