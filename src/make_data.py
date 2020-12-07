@@ -136,6 +136,8 @@ def create_json_files(df, data_type='train', target_summary_sent=None, path=''):
         end_idx_str = (length - len(str(end_idx-1)))*'0' + str(end_idx-1)
 
         file_name = os.path.join(f'{path}/{data_type}_{target_summary_sent}' \
+                                + f'/{data_type}.{start_idx_str}_{end_idx_str}.json') if target_summary_sent is not None \
+                    else os.path.join(f'{path}/{data_type}' \
                                 + f'/{data_type}.{start_idx_str}_{end_idx_str}.json')
         
         json_list = []
@@ -145,6 +147,7 @@ def create_json_files(df, data_type='train', target_summary_sent=None, path=''):
             # original_sents_list = [preprocessing(original_sent).split()
             #                         for original_sent in row['article_original']]
 
+            summary_sents_list = []
             if target_summary_sent is not None:
                 if target_summary_sent == 'ext':
                     summary_sents = row['extractive_sents']
@@ -204,12 +207,12 @@ if __name__ == '__main__':
 
     # python make_data.py -make train -by abs
     elif args.make  == 'train': # valid
-        # train_df = pd.read_pickle(f"{RAW_DATA_DIR}/{TASK}/train_df.pickle")
-        # valid_df = pd.read_pickle(f"{RAW_DATA_DIR}/{TASK}/valid_df.pickle")
+        train_df = pd.read_pickle(f"{RAW_DATA_DIR}/{TASK}/train_df.pickle")
+        valid_df = pd.read_pickle(f"{RAW_DATA_DIR}/{TASK}/valid_df.pickle")
 
-        # # make json file
-        # create_json_files(train_df, data_type='train', target_summary_sent=args.by, path=JSON_DATA_DIR)
-        # create_json_files(valid_df, data_type='valid', target_summary_sent=args.by, path=JSON_DATA_DIR)
+        # make json file
+        create_json_files(train_df, data_type='train', target_summary_sent=args.by, path=JSON_DATA_DIR)
+        create_json_files(valid_df, data_type='valid', target_summary_sent=args.by, path=JSON_DATA_DIR)
  
         # ## make bert data
         # 동일한 파일명 존재하면 덮어쓰는게 아니라 넘어감
@@ -221,6 +224,25 @@ if __name__ == '__main__':
                 -mode format_to_bert -dataset valid \
                 -raw_path {JSON_DATA_DIR}/valid_{args.by} -save_path {BERT_DATA_DIR}/valid_{args.by} -log_file {LOG_FILE} \
                 -lower -n_cpus 24")
+
+    # python make_data.py -make test
+    elif args.make == 'test':
+        with open(RAW_DATA_DIR + '/ext/extractive_test_v2.jsonl', 'r') as json_file:
+            json_list = list(json_file)
+
+        tests = []
+        for json_str in json_list:
+            line = json.loads(json_str)
+            tests.append(line)
+
+        test_df = pd.DataFrame(tests)
+        create_json_files(test_df, data_type='test', path=JSON_DATA_DIR)
+
+        os.system(f"python preprocess.py \
+                -mode format_to_bert -dataset test \
+                -raw_path {JSON_DATA_DIR}/test -save_path {BERT_DATA_DIR}/test -log_file {LOG_FILE} \
+                -lower -n_cpus 24")
+
 
     elif args.make  == 'test_prepro': # valid
         train_df = pd.read_csv(f"{RAW_DATA_DIR}/{TASK}/train_df.csv")[:10]
@@ -236,22 +258,3 @@ if __name__ == '__main__':
         # print(list(zip(original_sents_list_simple, original_sents_list_mecab)))
 
 
-
-
-    # elif args.make == 'test':
-    #     with open(RAW_DATA_DIR + '/ext/extractive_test_v2.jsonl', 'r') as json_file:
-    #         json_list = list(json_file)
-
-    #     tests = []
-    #     for json_str in json_list:
-    #         line = json.loads(json_str)
-    #         tests.append(line)
-
-    #     test_df = pd.DataFrame(tests)
-    #     create_json_files(test_df, type='test', path=JSON_DATA_DIR)
-
-
-        # !python preprocess.py \
-        #     -mode format_to_bert -dataset test \
-        #     -raw_path $JSON_DATA_DIR -save_path $BERT_DATA_DIR -log_file $LOG_FILE \
-        #     -lower -n_cpus 8
