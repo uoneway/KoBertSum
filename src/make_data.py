@@ -83,6 +83,10 @@ def noise_remove(text):
 
     # remove_redundant_white_spaces
     text = re.sub(' +', ' ', text)
+
+    # tgt special token 으로 활용할 204; 314[ 315] 대체/삭제해줘서 없애주기
+    text = re.sub(';', '.', text)
+    text = re.sub('\[|\]', ' ', text)
     
     return text
 
@@ -200,14 +204,14 @@ if __name__ == '__main__':
 
     # python make_data.py -make train -by abs
     elif args.make  == 'train': # valid
-        train_df = pd.read_pickle(f"{RAW_DATA_DIR}/{TASK}/train_df.pickle")
-        valid_df = pd.read_pickle(f"{RAW_DATA_DIR}/{TASK}/valid_df.pickle")
+        # train_df = pd.read_pickle(f"{RAW_DATA_DIR}/{TASK}/train_df.pickle")
+        # valid_df = pd.read_pickle(f"{RAW_DATA_DIR}/{TASK}/valid_df.pickle")
 
-        # make json file
-        create_json_files(train_df, data_type='train', target_summary_sent=args.by, path=JSON_DATA_DIR)
-        create_json_files(valid_df, data_type='valid', target_summary_sent=args.by, path=JSON_DATA_DIR)
+        # # make json file
+        # create_json_files(train_df, data_type='train', target_summary_sent=args.by, path=JSON_DATA_DIR)
+        # create_json_files(valid_df, data_type='valid', target_summary_sent=args.by, path=JSON_DATA_DIR)
  
-        ## make bert data
+        # ## make bert data
         # 동일한 파일명 존재하면 덮어쓰는게 아니라 넘어감
         os.system(f"python preprocess.py \
                 -mode format_to_bert -dataset train\

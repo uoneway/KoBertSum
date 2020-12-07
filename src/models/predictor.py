@@ -74,6 +74,12 @@ class Translator(object):
 
         self.tensorboard_writer = SummaryWriter(tensorboard_log_dir, comment="Unmt")
 
+        # 추가
+        self.tgt_bos = '[' # '[unused0]'   204; 314[ 315]
+        self.tgt_eos = ']' # '[unused1]'
+        self.tgt_sent_split = ';' #'[unused2]'
+
+
         if self.beam_trace:
             self.beam_accum = {
                 "predicted_ids": [],
@@ -151,7 +157,7 @@ class Translator(object):
 
                 for trans in translations:
                     pred, gold, src = trans
-                    pred_str = pred.replace('[unused0]', '').replace('[unused3]', '').replace('[PAD]', '').replace('[unused1]', '').replace(r' +', ' ').replace(' [unused2] ', '<q>').replace('[unused2]', '').strip()
+                    pred_str = pred.replace(self.tgt_bos, '').replace('[unused3]', '').replace('[PAD]', '').replace(self.tgt_eos, '').replace(r' +', ' ').replace(f' {self.tgt_sent_split} ', '<q>').replace(self.tgt_sent_split, '').strip()
                     gold_str = gold.strip()
                     if(self.args.recall_eval):
                         _pred_str = ''

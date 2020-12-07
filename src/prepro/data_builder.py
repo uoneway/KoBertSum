@@ -206,6 +206,8 @@ def hashhex(s):
 
 
 class BertData():
+    used_subtoken_idxs = set()
+
     def __init__(self, args):
         self.args = args
         self.tokenizer = KoBertTokenizer.from_pretrained("monologg/kobert", do_lower_case=True)
@@ -213,9 +215,9 @@ class BertData():
         self.sep_token = '[SEP]'
         self.cls_token = '[CLS]'
         self.pad_token = '[PAD]'
-        self.tgt_bos = '[unused0]'
-        self.tgt_eos = '[unused1]'
-        self.tgt_sent_split = '[unused2]'
+        self.tgt_bos = '[' # '[unused0]'   204; 314[ 315]
+        self.tgt_eos = ']' # '[unused1]'
+        self.tgt_sent_split = ';' #'[unused2]'
         self.sep_vid = self.tokenizer.token2idx[self.sep_token]
         self.cls_vid = self.tokenizer.token2idx[self.cls_token]
         self.pad_vid = self.tokenizer.token2idx[self.pad_token]
@@ -260,8 +262,9 @@ class BertData():
         sent_labels = sent_labels[:len(cls_ids)]
 
         # kobert transforemrs에 연결되어 있는 transforemrs tokenizer 사용
-        tgt_subtokens_str = '[unused0] ' + ' [unused2] '.join(
-            [' '.join(self.tokenizer.tokenize(' '.join(tt))) for tt in tgt]) + ' [unused1]'
+        tgt_subtokens_str = self.tgt_bos + ' '  \
+            + f' {self.tgt_sent_split} '.join([' '.join(self.tokenizer.tokenize(' '.join(tt))) for tt in tgt]) \
+            + ' ' + self.tgt_eos
         ## presumm tokenizer 사용
         # """Runs basic tokenization (punctuation splitting, lower casing, etc.)."""
         # tgt_subtokens_str = '[unused0] ' + ' [unused2] '.join(
@@ -272,10 +275,13 @@ class BertData():
         if ((not is_test) and len(tgt_subtoken) < self.args.min_tgt_ntokens):
             return None
         tgt_subtoken_idxs = self.tokenizer.convert_tokens_to_ids(tgt_subtoken)
-        print(tgt_subtoken)
-        #print(tgt_subtoken_idxs)
+        # print(tgt_subtoken)
+        # print(tgt_subtoken_idxs)
         tgt_txt = '<q>'.join([' '.join(tt) for tt in tgt])
         src_txt = [original_src_txt[i] for i in idxs]
+
+        BertData.used_subtoken_idxs.update(src_subtoken_idxs)
+        BertData.used_subtoken_idxs.update(tgt_subtoken_idxs)
 
         return src_subtoken_idxs, sent_labels, tgt_subtoken_idxs, segments_ids, cls_ids, src_txt, tgt_txt
 
@@ -307,7 +313,6 @@ def _format_to_bert(params):
         return
 
     bert = BertData(args)
-
     logger.info('Processing %s' % json_file)
     jobs = json.load(open(json_file))
     datasets = []
@@ -330,6 +335,11 @@ def _format_to_bert(params):
                        'src_txt': src_txt, "tgt_txt": tgt_txt}
         datasets.append(b_data_dict)
     logger.info('Processed instances %d' % len(datasets))
+
+    with open(args.save_path + '/used_subtoken_idxs.txt', 'a') as f:
+        for idx in BertData.used_subtoken_idxs:
+            f.write("%s\n" % idx)
+
     logger.info('Saving to %s' % save_file)
     torch.save(datasets, save_file)
     datasets = []
