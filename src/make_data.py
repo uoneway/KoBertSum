@@ -64,15 +64,15 @@ def noise_remove(text):
     text = text.lower()
     
     # url 대체
-    url_pattern = re.compile(r'https?://\S*|www\.\S*')
-    text = url_pattern.sub(r'URL', text)
+    # url_pattern = re.compile(r'https?://\S*|www\.\S*')
+    # text = url_pattern.sub(r'URL', text)
 
     # html 삭제
     soup = BeautifulSoup(text, "html.parser")
     text = soup.get_text(separator=" ")
 
     # 숫자 중간에 공백 삽입하기
-    text = number_split(text)
+    # text = number_split(text)
     #number_pattern = re.compile('\w*\d\w*') 
 #     number_pattern = re.compile('\d+') 
 #     text = number_pattern.sub(r'[[NUMBER]]', text)
@@ -143,10 +143,8 @@ def create_json_files(df, data_type='train', target_summary_sent=None, path=''):
         
         json_list = []
         for i, row in df.iloc[start_idx:end_idx].iterrows():
-            original_sents_list = [preprocessing(original_sent, korean_tokenizer).split()
+            original_sents_list = [preprocessing(original_sent).split()  # , korean_tokenizer
                                     for original_sent in row['article_original']]
-            # original_sents_list = [preprocessing(original_sent).split()
-            #                         for original_sent in row['article_original']]
 
             summary_sents_list = []
             if target_summary_sent is not None:
@@ -154,10 +152,8 @@ def create_json_files(df, data_type='train', target_summary_sent=None, path=''):
                     summary_sents = row['extractive_sents']
                 elif target_summary_sent == 'abs':
                     summary_sents = korean_sent_spliter(row['abstractive'])   
-                summary_sents_list = [preprocessing(original_sent, korean_tokenizer).split()
+                summary_sents_list = [preprocessing(original_sent).split() # , korean_tokenizer
                                         for original_sent in summary_sents]
-                # summary_sents_list = [preprocessing(original_sent).split()
-                #                         for original_sent in summary_sents] if type == 'train' else []
 
             json_list.append({'src': original_sents_list,
                               'tgt': summary_sents_list
@@ -217,10 +213,12 @@ if __name__ == '__main__':
  
         # ## make bert data
         # 동일한 파일명 존재하면 덮어쓰는게 아니라 넘어감
+        os.system(f"rm {BERT_DATA_DIR}/train_{args.by}/*")
         os.system(f"python preprocess.py \
                 -mode format_to_bert -dataset train\
-                -raw_path {JSON_DATA_DIR}/train_{args.by} -save_path {BERT_DATA_DIR}/temp -log_file {LOG_FILE} \
+                -raw_path {JSON_DATA_DIR}/train_{args.by} -save_path {BERT_DATA_DIR}/train_{args.by} -log_file {LOG_FILE} \
                 -lower -n_cpus 24")
+        os.system(f"rm {BERT_DATA_DIR}/valid_{args.by}/*")
         os.system(f"python preprocess.py \
                 -mode format_to_bert -dataset valid \
                 -raw_path {JSON_DATA_DIR}/valid_{args.by} -save_path {BERT_DATA_DIR}/valid_{args.by} -log_file {LOG_FILE} \
@@ -239,6 +237,7 @@ if __name__ == '__main__':
         test_df = pd.DataFrame(tests)
         create_json_files(test_df, data_type='test', path=JSON_DATA_DIR)
 
+        os.system(f"rm {BERT_DATA_DIR}/test/*")
         os.system(f"python preprocess.py \
                 -mode format_to_bert -dataset test \
                 -raw_path {JSON_DATA_DIR}/test -save_path {BERT_DATA_DIR}/test -log_file {LOG_FILE} \
