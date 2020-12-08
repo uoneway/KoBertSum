@@ -23,6 +23,11 @@ from prepro.utils import _get_word_ngrams
 
 import xml.etree.ElementTree as ET
 
+# for full_selection
+from itertools import permutations 
+import numpy as np
+from others.rouge_metric import Rouge
+
 nyt_remove_words = ["photo", "graph", "chart", "map", "table", "drawing"]
 
 
@@ -161,7 +166,7 @@ def cal_rouge(evaluated_ngrams, reference_ngrams):
 
 def greedy_selection(doc_sent_list, abstract_sent_list, summary_size):
     def _rouge_clean(s):
-        return re.sub(r'[^a-zA-Z0-9 ]', '', s)
+        return re.sub(r'[^a-zA-Z0-9가-힣 ]', '', s)
 
     max_rouge = 0.0
     abstract = sum(abstract_sent_list, [])
@@ -197,6 +202,82 @@ def greedy_selection(doc_sent_list, abstract_sent_list, summary_size):
 
     return sorted(selected)
 
+# 전체 경우의 수 탐색
+def full_selection(doc_sent_list, abstract_sent_list, summary_size=3):
+    def _rouge_clean(s):
+        return re.sub(r'[^A-Za-z0-9가-힣 ]', '', s)
+
+    rouge_evaluator = Rouge(
+            metrics=["rouge-n", "rouge-l"],
+            max_n=2,
+            limit_length=True,
+            length_limit=1000,
+            length_limit_type="words",
+            use_tokenizer=True,
+            apply_avg=True,
+            apply_best=False,
+            alpha=0.5,  # Default F1_score
+            weight_factor=1.2,
+        )
+
+    # cleaning and merge [[w,w,w], [w,w,w]] -> [w,w,w, w,w,w] 
+    abstract = sum(abstract_sent_list, [])  # [[w,w,w], [w,w,w]] -> [w,w,w, w,w,w] 
+    abstract = _rouge_clean(' '.join(abstract))
+    doc_sent_list_merged = [_rouge_clean(' '.join(sent)) for sent in doc_sent_list]
+    src_len = len(doc_sent_list_merged)
+
+    selected_idx3_list = []
+    total_max_rouge_score = 0.0
+    if src_len > 15: # greedy
+        for i in range(summary_size):
+
+            #cur_sents_idx3_list = []
+            cur_max_total_rouge_score = 0.0
+            cur_sent_idx = -1
+            for sent_idx, sent in enumerate(doc_sent_list_merged):
+                
+                if sent_idx in selected_idx3_list:
+                    continue
+                temp_idx3_list = selected_idx3_list + [sent_idx]
+                sents_array = np.array(doc_sent_list_merged)[temp_idx3_list]
+                sents_merged = ' '.join(sents_array)
+                #print('temp_idx3_list', temp_idx3_list)
+                # ROUGE1,2,l 합score 계산
+                rouge_scores = rouge_evaluator.get_scores(sents_merged, abstract)
+                total_rouge_score = 0
+                for k, v in rouge_scores.items():
+                    total_rouge_score += v['f']
+                # print('total_rouge_score', total_rouge_score)
+                if total_rouge_score > cur_max_total_rouge_score:
+                    cur_max_total_rouge_score = total_rouge_score
+                    cur_sent_idx = sent_idx
+                  #  print(cur_max_total_rouge_score)
+                   # print(selected_idx3_list)
+            selected_idx3_list.append(cur_sent_idx)
+            # print('-----------------------')
+        total_max_rouge_score = cur_max_total_rouge_score
+            
+    else:  # full
+
+        sents_idx_perm_list = list(permutations(range(src_len), 3)) 
+        for sents_idx_perm in sents_idx_perm_list:
+            sents_array = np.array(doc_sent_list_merged)[list(sents_idx_perm)]
+            sents_merged = ' '.join(sents_array)
+            #print(sents_merged)
+            # print(sents_idx_perm)
+            # print(sents_array)
+
+            # ROUGE1,2,l 합score 계산
+            rouge_scores = rouge_evaluator.get_scores(sents_merged, abstract)
+            total_rouge_score = 0
+            for k, v in rouge_scores.items():
+                total_rouge_score += v['f']
+            
+            if total_rouge_score > total_max_rouge_score:
+                total_max_rouge_score = total_rouge_score
+                selected_idx3_list = list(sents_idx_perm)
+
+    return selected_idx3_list #, total_max_rouge_score,  sorted(selected_idx3_list)
 
 def hashhex(s):
     """Returns a heximal formated SHA1 hash of the input string."""
@@ -275,8 +356,8 @@ class BertData():
         if ((not is_test) and len(tgt_subtoken) < self.args.min_tgt_ntokens):
             return None
         tgt_subtoken_idxs = self.tokenizer.convert_tokens_to_ids(tgt_subtoken)
-        print(tgt_subtoken)
-        print(tgt_subtoken_idxs)
+        # print(tgt_subtoken)
+        # print(tgt_subtoken_idxs)
         tgt_txt = '<q>'.join([' '.join(tt) for tt in tgt])
         src_txt = [original_src_txt[i] for i in idxs]
 
@@ -318,8 +399,10 @@ def _format_to_bert(params):
     datasets = []
     for d in jobs:
         source, tgt = d['src'], d['tgt']
-
-        sent_labels = greedy_selection(source[:args.max_src_nsents], tgt, 3)
+        print(source)
+        sent_labels = full_selection(source[:args.max_src_nsents], tgt, 3)
+        # sent_labels = greedy_selection(source[:args.max_src_nsents], tgt, 3)
+        print(sent_labels)
         if (args.lower):
             source = [' '.join(s).lower().split() for s in source]
             tgt = [' '.join(s).lower().split() for s in tgt]
@@ -336,9 +419,9 @@ def _format_to_bert(params):
         datasets.append(b_data_dict)
     logger.info('Processed instances %d' % len(datasets))
 
-    with open(args.save_path + '/used_subtoken_idxs.txt', 'a') as f:
-        for idx in BertData.used_subtoken_idxs:
-            f.write("%s\n" % idx)
+    # with open(args.save_path + '/used_subtoken_idxs.txt', 'a') as f:
+    #     for idx in BertData.used_subtoken_idxs:
+    #         f.write("%s\n" % idx)
 
     logger.info('Saving to %s' % save_file)
     torch.save(datasets, save_file)
