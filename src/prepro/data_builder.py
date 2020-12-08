@@ -163,7 +163,8 @@ def cal_rouge(evaluated_ngrams, reference_ngrams):
     f1_score = 2.0 * ((precision * recall) / (precision + recall + 1e-8))
     return {"f": f1_score, "p": precision, "r": recall}
 
-
+# 1개만 선택했을 때 가장 높은거 고르고, 그 1개와 다른 1개 조합했을 때 가장 높은거 고르고... 차례대로
+# 만약 1개만 선택한것보다 다른 1개 더 선택하는 조합의 루지 점수가 떨어지면 그냥 1개만 나올 수 도 있음
 def greedy_selection(doc_sent_list, abstract_sent_list, summary_size):
     def _rouge_clean(s):
         return re.sub(r'[^a-zA-Z0-9가-힣 ]', '', s)
@@ -200,7 +201,7 @@ def greedy_selection(doc_sent_list, abstract_sent_list, summary_size):
         selected.append(cur_id)
         max_rouge = cur_max_rouge
 
-    return sorted(selected)
+    return selected # sorted(selected)
 
 # 전체 경우의 수 탐색
 def full_selection(doc_sent_list, abstract_sent_list, summary_size=3):
@@ -226,10 +227,15 @@ def full_selection(doc_sent_list, abstract_sent_list, summary_size=3):
     doc_sent_list_merged = [_rouge_clean(' '.join(sent)) for sent in doc_sent_list]
     src_len = len(doc_sent_list_merged)
 
-    selected_idx3_list = []
+    # 일단 greedy로 구한 다음 3개가 안되는 경우만 나머지를 full로 채움!
+    selected_idx3_list = greedy_selection(doc_sent_list, abstract_sent_list, summary_size)
+    # print('1 ', selected_idx3_list)
+    # if len(selected_idx3_list) == 3:
+    #     return selected_idx3_list
+
     total_max_rouge_score = 0.0
-    if src_len > 15: # greedy
-        for i in range(summary_size):
+    if src_len > 10 or (src_len <= 10 and len(selected_idx3_list) < 2): # greedy
+        for i in range(summary_size - len(selected_idx3_list)):
 
             #cur_sents_idx3_list = []
             cur_max_total_rouge_score = 0.0
@@ -255,28 +261,33 @@ def full_selection(doc_sent_list, abstract_sent_list, summary_size=3):
                    # print(selected_idx3_list)
             selected_idx3_list.append(cur_sent_idx)
             # print('-----------------------')
-        total_max_rouge_score = cur_max_total_rouge_score
+            total_max_rouge_score = cur_max_total_rouge_score
+    # print('2 ', selected_idx3_list)      
             
-    else:  # full
+    # full
+    sents_idx_perm_list = list(permutations(range(src_len), summary_size)) 
+    sents_idx_list = []
+    for sents_idx_perm in sents_idx_perm_list:
+        if set(sents_idx_perm) & set(selected_idx3_list) == set(selected_idx3_list):
+            sents_idx_list.append(sents_idx_perm)
 
-        sents_idx_perm_list = list(permutations(range(src_len), 3)) 
-        for sents_idx_perm in sents_idx_perm_list:
-            sents_array = np.array(doc_sent_list_merged)[list(sents_idx_perm)]
-            sents_merged = ' '.join(sents_array)
-            #print(sents_merged)
-            # print(sents_idx_perm)
-            # print(sents_array)
+    for sents_idx in sents_idx_list:
+        sents_array = np.array(doc_sent_list_merged)[list(sents_idx)]
+        sents_merged = ' '.join(sents_array)
+        #print(sents_merged)
+        # print(sents_idx)
+        # print(sents_array)
 
-            # ROUGE1,2,l 합score 계산
-            rouge_scores = rouge_evaluator.get_scores(sents_merged, abstract)
-            total_rouge_score = 0
-            for k, v in rouge_scores.items():
-                total_rouge_score += v['f']
-            
-            if total_rouge_score > total_max_rouge_score:
-                total_max_rouge_score = total_rouge_score
-                selected_idx3_list = list(sents_idx_perm)
+        # ROUGE1,2,l 합score 계산
+        rouge_scores = rouge_evaluator.get_scores(sents_merged, abstract)
+        total_rouge_score = 0
+        for k, v in rouge_scores.items():
+            total_rouge_score += v['f']
 
+        if total_rouge_score > total_max_rouge_score:
+            total_max_rouge_score = total_rouge_score
+            selected_idx3_list = list(sents_idx)
+    # print('3 ', selected_idx3_list)  
     return selected_idx3_list #, total_max_rouge_score,  sorted(selected_idx3_list)
 
 def hashhex(s):
@@ -399,10 +410,10 @@ def _format_to_bert(params):
     datasets = []
     for d in jobs:
         source, tgt = d['src'], d['tgt']
-        print(source)
+        #print(source)
         sent_labels = full_selection(source[:args.max_src_nsents], tgt, 3)
         # sent_labels = greedy_selection(source[:args.max_src_nsents], tgt, 3)
-        print(sent_labels)
+        #print(sent_labels)
         if (args.lower):
             source = [' '.join(s).lower().split() for s in source]
             tgt = [' '.join(s).lower().split() for s in tgt]
