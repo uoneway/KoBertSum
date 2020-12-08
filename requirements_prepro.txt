@@ -4,5 +4,5 @@ bs4
 pandas
 
 # test
-py-rouge
+# py-rouge
 nltk

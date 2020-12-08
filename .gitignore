@@ -5,3 +5,4 @@ logs/
 __pycache__
 temp/
 models/
+notebooks/.ipynb_checkpoints/
