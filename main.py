@@ -16,8 +16,11 @@ RESULT_DIR = PROJECT_DIR + '/results'
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("-task", default='test', type=str, choices=['data', 'train', 'test'])
+    parser.add_argument("-task", default='test', type=str, choices=['data', 'train', 'valid', 'test'])
     parser.add_argument("-train_from", default=None, type=str)
+    parser.add_argument("-model_path", default=None, type=str)
+    parser.add_argument("-test_from", default=None, type=str)
+    parser.add_argument("-target_summary_sent", default='abs', type=str)
     #parser.add_argument("-use_bert_emb", type=str2bool, nargs='?',const=True,default=False)
     args = parser.parse_args()
 
@@ -33,7 +36,7 @@ if __name__ == '__main__':
         # os.system("python make_bert_data.py train")
         # os.system("python make_bert_data.py test")
 
-    # python main.py -task train -train_from 1204_1540/model_step_32000.pt
+    # python main.py -task train -target_summary_sent abs -train_from 1204_1540/model_step_32000.pt 
     elif args.task == 'train':
         """
         파라미터별 설명은 trainer_ext 참고
@@ -49,12 +52,11 @@ if __name__ == '__main__':
 
         do_str = f"""\
             python train.py -task ext -mode train \
-                -bert_data_path {BERT_DATA_DIR}/train_abs \
+                -bert_data_path {BERT_DATA_DIR}/train_{args.target_summary_sent} \
                 -save_checkpoint_steps 1000 -visible_gpus 0,1 -report_every 50 \
                 {param} \
                 """ 
         if args.train_from is None:
-            print('11111111111')
             os.system(f'mkdir {MODEL_DIR}/{now}')
             do_str += f"""\
                 -model_path {MODEL_DIR}/{now} \
@@ -71,21 +73,51 @@ if __name__ == '__main__':
         print(do_str)
         os.system(do_str)
 
-    # python main.py test 201205_0306/model_step_9000.pt
+    # python main.py -task valid -model_path 1208_0747
+    elif args.task == 'valid':
+        """
+        python train.py -task abs -mode validate -batch_size 3000 -test_batch_size 500 
+        -bert_data_path BERT_DATA_PATH -log_file ../logs/val_abs_bert_cnndm -model_path MODEL_PATH -result_path ../logs/abs_bert_cnndm 
+        -sep_optim true -use_interval true -visible_gpus 1 
+        -max_pos 512 -max_length 200 -alpha 0.95 -min_length 50 
+        -max_pos 512 -min_length 20 -max_length 100 -alpha 0.9 
+        """
+        os.system(f"python train.py -task ext -mode validate -test_all True"
+            + f" -model_path {MODEL_DIR}/{args.model_path}"
+            + f" -bert_data_path {BERT_DATA_DIR}/valid_ext"
+            + f" -result_path {RESULT_DIR}/result_{args.model_path}"
+            + f" -log_file {LOG_DIR}/valid_{args.model_path}.log"
+            + f" -test_batch_size 500  -batch_size 3000"
+            + f" -sep_optim true -use_interval true -visible_gpus 0,1"
+            + f" -max_pos 512 -max_length 200 -alpha 0.95 -min_length 50"
+            + f" -report_rouge True"
+            + f" -max_tgt_len 100"
+        )
+
+    # python main.py -task test -test_from 1207_1054/model_step_27000.pt
     elif args.task == 'test':
-        model_date, model_step = sys.argv[2].split('/')
+        model_folder, model_name = args.test_from.rsplit('/', 1)
+        model_name = model_name.split('_', 1)[1].split('.')[0]
+        os.system(f"""\
+            python train.py -task ext -mode test \
+            -test_from {MODEL_DIR}/{args.test_from} \
+            -bert_data_path {BERT_DATA_DIR}/test \
+            -result_path {RESULT_DIR}/result_{model_folder} \
+            -log_file {LOG_DIR}/test_{model_folder}.log \
+            -test_batch_size 1  -batch_size 3000 \
+            -sep_optim true -use_interval true -visible_gpus 1 \
+            -max_pos 512 -max_length 200 -alpha 0.95 -min_length 50 \
+            -report_rouge False \
+            -max_tgt_len 100
+        """)
+        #             -max_pos 512 -max_length 200 -alpha 0.95 -min_length 50 \
+        # -report_rouge True  \
+        #  -model_path {MODEL_DIR} 
+        # args.max_tgt_len=140  이거 수정해도 효과가 거의
 
         os.system(f"""
-        python train.py -task ext -mode test \
-            -test_from {MODEL_DIR}/{sys.argv[2]} \
-            -bert_data_path {BERT_DATA_DIR}/test \
-            -result_path {RESULT_DIR}/result -log_file {LOG_DIR}/test_{now}.log \
-            -model_path {MODEL_DIR} \
-            -test_batch_size 1  -batch_size 300 \
-            -sep_optim true -use_interval true -visible_gpus -1 -max_pos 512 -max_length 200 -alpha 0.95 -min_length 50 \
-            -report_rouge True  \
+            python make_submission.py result_{model_folder}_{model_name}.candidate
         """)
-        #  -model_path {MODEL_DIR} 
 
     elif args.task == 'rouge':
         pass
