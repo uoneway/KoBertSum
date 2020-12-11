@@ -24,15 +24,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-task", default='test', type=str, choices=['make_data', 'train', 'valid', 'test'])
     parser.add_argument("-n_cpus", default='2', type=str)
+    parser.add_argument("-target_summary_sent", default='abs', type=str)
     parser.add_argument("-train_from", default=None, type=str)
     parser.add_argument("-model_path", default=None, type=str)
     parser.add_argument("-test_from", default=None, type=str)
-    parser.add_argument("-target_summary_sent", default='abs', type=str)
-    #parser.add_argument("-use_bert_emb", type=str2bool, nargs='?',const=True,default=False)
     args = parser.parse_args()
 
-
-    now = time.strftime('%m%d_%H%M')
+    # now = time.strftime('%m%d_%H%M')
+    now = "1209_1236"
 
     # python main.py -task install
     if args.task == 'install':
@@ -99,7 +98,7 @@ if __name__ == '__main__':
             + f" -max_tgt_len 100"
         )
 
-    # python main.py -task test -test_from 1209_1236/model_step_7000.pt   abs
+    # python main.py -task test -test_from 1209_1236/model_step_7000.pt
     elif args.task == 'test':
         model_folder, model_name = args.test_from.rsplit('/', 1)
         model_name = model_name.split('_', 1)[1].split('.')[0]
