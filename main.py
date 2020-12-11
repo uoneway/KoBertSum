@@ -4,19 +4,21 @@ import time
 import argparse
 #from src.others.test_rouge_score import RougeScorer
 
-PROJECT_DIR = '/home/uoneway/Project/PreSumm_ko'
+## 사용할 path 정의
+# PROJECT_DIR = '/home/uoneway/Project/PreSumm_ko'
+PROJECT_DIR = ''
 DATA_DIR = PROJECT_DIR + '/data'
 RAW_DATA_DIR = DATA_DIR + '/raw'
 JSON_DATA_DIR = DATA_DIR + '/json_data'
 BERT_DATA_DIR = DATA_DIR + '/bert_data' 
 
 MODEL_DIR = PROJECT_DIR + '/models'  
-LOG_DIR = PROJECT_DIR + '/logs' # logs -> for storing logs information during preprocess and finetuning
+LOG_DIR = PROJECT_DIR + '/logs'
 RESULT_DIR = PROJECT_DIR + '/results' 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("-task", default='test', type=str, choices=['data', 'train', 'valid', 'test'])
+    parser.add_argument("-task", default='test', type=str, choices=['make_data', 'train', 'valid', 'test'])
     parser.add_argument("-train_from", default=None, type=str)
     parser.add_argument("-model_path", default=None, type=str)
     parser.add_argument("-test_from", default=None, type=str)
@@ -27,14 +29,11 @@ if __name__ == '__main__':
     os.chdir(PROJECT_DIR + '/src')
     now = time.strftime('%m%d_%H%M')
 
-    if args.task == 'data':
-        pass
-        # ### 전처리
-        # os.system("python make_json_data.py train abs")
-        # os.system("python make_json_data.py test")
-
-        # os.system("python make_bert_data.py train")
-        # os.system("python make_bert_data.py test")
+    # python main.py -task make_data
+    if args.task == 'make_data':
+        ## 전처리
+        os.system("python make_data.py -task df")
+        os.system("python make_data.py -task bert  -target_summary_sent abs")
 
     # python main.py -task train -target_summary_sent abs -train_from 1204_1540/model_step_32000.pt 
     elif args.task == 'train':
