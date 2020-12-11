@@ -189,7 +189,9 @@ class Trainer(object):
                 mask_cls = batch.mask_cls
 
                 sent_scores, mask = self.model(src, segs, clss, mask, mask_cls)
-
+                # print(labels)
+                # print(sent_scores)
+                # print(mask)
                 loss = self.loss(sent_scores, labels.float())
                 loss = (loss * mask.float()).sum()
                 batch_stats = Statistics(float(loss.cpu().data.numpy()), len(labels))
@@ -257,7 +259,9 @@ class Trainer(object):
 
                             sent_scores = sent_scores + mask.float()
                             sent_scores = sent_scores.cpu().data.numpy()
+                            # print(sent_scores)
                             selected_ids = np.argsort(-sent_scores, 1)
+                            # print(selected_ids)
                         # selected_ids = np.sort(selected_ids,1)
                         for i, idx in enumerate(selected_ids):
                             _pred = []
@@ -279,10 +283,13 @@ class Trainer(object):
                                 if ((not cal_oracle) and (not self.args.recall_eval) and len(_pred) == 3):
                                     break
                             
-                            # if len(_pred) < 3:
-                            #     print('selected_ids: ', selected_ids)
-                            #     print('batch.src_str[i]: ', batch.src_str[i])
-                            #     print('selected_ids[i]: ', selected_ids[i])
+                            if len(_pred) < 3:
+                                print(_pred)
+                                #print('selected_ids: ', selected_ids)
+                                print('batch.src_str[i]: ', batch.src_str[i])
+                                print('selected_ids[i]: ', selected_ids[i])
+                                _pred = np.array(batch.src_str[i])[selected_ids[i][:3]]
+                                print(_pred)
 
 
                             _pred = '<q>'.join(_pred)
@@ -292,7 +299,8 @@ class Trainer(object):
                             pred.append(_pred)
                             pred_idx.append(_pred_idx)
                             gold.append(batch.tgt_str[i])
-
+                        #print(batch.tgt_str)
+                        # print(pred)
                         for i in range(len(gold)):
                             save_gold.write(gold[i].strip() + '\n')
                         for i in range(len(pred)):
