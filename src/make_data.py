@@ -11,7 +11,6 @@ from tqdm import tqdm
 import argparse
 import pickle
 
-
 PROBLEM = 'ext'
 
 ## 사용할 path 정의
@@ -22,7 +21,6 @@ DATA_DIR = f'{PROJECT_DIR}/{PROBLEM}/data'
 RAW_DATA_DIR = DATA_DIR + '/raw'
 JSON_DATA_DIR = DATA_DIR + '/json_data'
 BERT_DATA_DIR = DATA_DIR + '/bert_data' 
-MODEL_DIR = f'{PROJECT_DIR}/{PROBLEM}/models' 
 LOG_DIR = f'{PROJECT_DIR}/{PROBLEM}/logs'
 LOG_PREPO_FILE = LOG_DIR + '/preprocessing.log' 
 
@@ -179,6 +177,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-task", default=None, type=str, choices=['df', 'train_bert', 'test_bert'])
     parser.add_argument("-target_summary_sent", default='abs', type=str)
+    parser.add_argument("-n_cpus", default='2', type=str)
 
     args = parser.parse_args()
 
@@ -253,7 +252,40 @@ if __name__ == '__main__':
                 + f" -raw_path {json_data_dir}"
                 + f" -save_path {bert_data_dir}"
                 + f" -log_file {LOG_PREPO_FILE}"
-                + f" -lower -n_cpus 24")
+                + f" -lower -n_cpus {args.n_cpus}")
+
+
+    # python make_data.py -task test_bert
+    elif args.task  == 'test_bert':
+        os.makedirs(JSON_DATA_DIR, exist_ok=True)
+        os.makedirs(BERT_DATA_DIR, exist_ok=True)
+        os.makedirs(LOG_DIR, exist_ok=True)
+
+        test_df = pd.read_pickle(f"{RAW_DATA_DIR}/test_df.pickle")
+
+        ## make json file
+        # 동일한 파일명 존재하면 덮어쓰는게 아니라 ignore됨에 따라 폴더 내 삭제 후 만들어주기
+        json_data_dir = f"{JSON_DATA_DIR}/test"
+        if os.path.exists(json_data_dir):
+            os.system(f"rm {json_data_dir}/*")
+        else:
+            os.mkdir(json_data_dir)
+
+        create_json_files(test_df, data_type=data_type, target_summary_sent=args.target_summary_sent, path=JSON_DATA_DIR)
+        
+        ## Convert json to bert.pt files
+        bert_data_dir = f"{BERT_DATA_DIR}/test"
+        if os.path.exists(bert_data_dir):
+            os.system(f"rm {bert_data_dir}/*")
+        else:
+            os.mkdir(bert_data_dir)
+        
+        os.system(f"python preprocess.py"
+            + f" -mode format_to_bert -dataset test"
+            + f" -raw_path {json_data_dir}"
+            + f" -save_path {bert_data_dir}"
+            + f" -log_file {LOG_PREPO_FILE}"
+            + f" -lower -n_cpus {args.n_cpus}")
 
 
     # elif args.task  == 'train_bert':
