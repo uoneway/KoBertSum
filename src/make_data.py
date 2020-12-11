@@ -271,7 +271,7 @@ if __name__ == '__main__':
         else:
             os.mkdir(json_data_dir)
 
-        create_json_files(test_df, data_type=data_type, target_summary_sent=args.target_summary_sent, path=JSON_DATA_DIR)
+        create_json_files(test_df, data_type='test', path=JSON_DATA_DIR)
         
         ## Convert json to bert.pt files
         bert_data_dir = f"{BERT_DATA_DIR}/test"

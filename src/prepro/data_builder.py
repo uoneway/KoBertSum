@@ -15,7 +15,7 @@ from multiprocess import Pool
 
 from others.logging import logger
 # from others.tokenization import BertTokenizer
-from tokenization_kobert import KoBertTokenizer
+from prepro.tokenization_kobert import KoBertTokenizer
 from transformers import XLNetTokenizer
 
 from others.utils import clean
