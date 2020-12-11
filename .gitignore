@@ -1,8 +1,7 @@
 .vscode/
 data/
-tmp/
 logs/
 __pycache__
 temp/
-models/
+/models/
 notebooks/.ipynb_checkpoints/
