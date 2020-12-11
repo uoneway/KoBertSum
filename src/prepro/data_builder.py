@@ -326,9 +326,12 @@ class BertData():
         _sent_labels = [0] * len(src)
         for l in sent_labels:
             _sent_labels[l] = 1
-
+        # print(sent_labels)
+        # print(_sent_labels)
         src = [src[i][:self.args.max_src_ntokens_per_sent] for i in idxs]
         sent_labels = [_sent_labels[i] for i in idxs]
+        # print(idxs)
+        # print(sent_labels)
         src = src[:self.args.max_src_nsents]
         sent_labels = sent_labels[:self.args.max_src_nsents]
 
@@ -374,7 +377,7 @@ class BertData():
 
         # BertData.used_subtoken_idxs.update(src_subtoken_idxs)
         # BertData.used_subtoken_idxs.update(tgt_subtoken_idxs)
-
+        # print(sent_labels)
         return src_subtoken_idxs, sent_labels, tgt_subtoken_idxs, segments_ids, cls_ids, src_txt, tgt_txt
 
 
@@ -413,7 +416,7 @@ def _format_to_bert(params):
         #print(source)
         sent_labels = full_selection(source[:args.max_src_nsents], tgt, 3)
         # sent_labels = greedy_selection(source[:args.max_src_nsents], tgt, 3)
-        #print(sent_labels)
+        # print(sent_labels)
         if (args.lower):
             source = [' '.join(s).lower().split() for s in source]
             tgt = [' '.join(s).lower().split() for s in tgt]
@@ -426,7 +429,8 @@ def _format_to_bert(params):
         src_subtoken_idxs, sent_labels, tgt_subtoken_idxs, segments_ids, cls_ids, src_txt, tgt_txt = b_data
         b_data_dict = {"src": src_subtoken_idxs, "tgt": tgt_subtoken_idxs,
                        "src_sent_labels": sent_labels, "segs": segments_ids, 'clss': cls_ids,
-                       'src_txt': src_txt, "tgt_txt": tgt_txt}
+                       'src_txt': src_txt, "tgt_txt": tgt_txt}   ##  (원복)원래 키값이 src_txt, tgt_txt 이었는데 수정!!!!!
+        # print(b_data_dict)
         datasets.append(b_data_dict)
     logger.info('Processed instances %d' % len(datasets))
 

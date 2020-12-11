@@ -15,7 +15,7 @@ MODEL_DIR = PROJECT_DIR + '/models'
 LOG_DIR = PROJECT_DIR + '/logs' # logs -> for storing logs information during preprocess and finetuning
 RESULT_DIR = PROJECT_DIR + '/results' 
 
-
+# python make_submission.py result_1207_1054_step_24000.candidate
 if __name__ == '__main__':
     # test set
     with open(RAW_DATA_DIR + '/ext/extractive_test_v2.jsonl', 'r') as json_file:

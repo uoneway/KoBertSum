@@ -67,13 +67,13 @@ if __name__ == '__main__':
             do_str += f"""\
                 -train_from {MODEL_DIR}/{args.train_from} \
                 -model_path {MODEL_DIR}/{model_folder} \
-                -log_file {LOG_DIR}/train_{model_folder}_{model_name}.log \
+                -log_file {LOG_DIR}/train_{model_folder}.log \
                 """
             
         print(do_str)
         os.system(do_str)
 
-    # python main.py -task valid -model_path 1208_0747
+    # python main.py -task valid -model_path 1209_1236
     elif args.task == 'valid':
         """
         python train.py -task abs -mode validate -batch_size 3000 -test_batch_size 500 
@@ -84,17 +84,18 @@ if __name__ == '__main__':
         """
         os.system(f"python train.py -task ext -mode validate -test_all True"
             + f" -model_path {MODEL_DIR}/{args.model_path}"
-            + f" -bert_data_path {BERT_DATA_DIR}/valid_ext"
+            + f" -bert_data_path {BERT_DATA_DIR}/valid_abs"
             + f" -result_path {RESULT_DIR}/result_{args.model_path}"
             + f" -log_file {LOG_DIR}/valid_{args.model_path}.log"
             + f" -test_batch_size 500  -batch_size 3000"
             + f" -sep_optim true -use_interval true -visible_gpus 0,1"
             + f" -max_pos 512 -max_length 200 -alpha 0.95 -min_length 50"
-            + f" -report_rouge True"
+            + f" -report_rouge False"
             + f" -max_tgt_len 100"
         )
 
-    # python main.py -task test -test_from 1207_1054/model_step_27000.pt
+    # python main.py -task test -test_from 1209_0614/model_step_7000.pt   abs
+    # python main.py -task test -test_from 1209_1236/model_step_10000.pt   ext
     elif args.task == 'test':
         model_folder, model_name = args.test_from.rsplit('/', 1)
         model_name = model_name.split('_', 1)[1].split('.')[0]
@@ -105,7 +106,7 @@ if __name__ == '__main__':
             -result_path {RESULT_DIR}/result_{model_folder} \
             -log_file {LOG_DIR}/test_{model_folder}.log \
             -test_batch_size 1  -batch_size 3000 \
-            -sep_optim true -use_interval true -visible_gpus 1 \
+            -sep_optim true -use_interval true -visible_gpus 0,1 \
             -max_pos 512 -max_length 200 -alpha 0.95 -min_length 50 \
             -report_rouge False \
             -max_tgt_len 100

@@ -13,7 +13,7 @@ def build_optim(args, model, checkpoint):
     """ Build optimizer """
 
     if checkpoint is not None:
-        optim = checkpoint['optim'][0]
+        optim = checkpoint['optim'] #[0]  ['optims'] [0]   원래 ['optim'][0]이었는데 오류남
         saved_optimizer_state_dict = optim.optimizer.state_dict()
         optim.optimizer.load_state_dict(saved_optimizer_state_dict)
         if args.visible_gpus != '-1':
