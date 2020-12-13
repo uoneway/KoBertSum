@@ -182,6 +182,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # python make_data.py -make df
+    # Convert raw data to df
     if args.task == 'df': # and valid_df
         os.makedirs(DATA_DIR, exist_ok=True)
         os.makedirs(RAW_DATA_DIR, exist_ok=True)
@@ -205,7 +206,7 @@ if __name__ == '__main__':
         df = pd.DataFrame(trains)
         df['extractive_sents'] = df.apply(lambda row: list(np.array(row['article_original'])[row['extractive']]) , axis=1)
 
-        # randomly split
+        # random split
         train_df = df.sample(frac=0.95,random_state=42) #random state is a seed value
         valid_df = df.drop(train_df.index)
         train_df.reset_index(inplace=True, drop=True)
@@ -222,6 +223,7 @@ if __name__ == '__main__':
         print(f'test_df({len(test_df)}) is exported')
         
     # python make_data.py -make bert -by abs
+    # Make bert input file for train and valid from df file
     elif args.task  == 'train_bert':
         os.makedirs(JSON_DATA_DIR, exist_ok=True)
         os.makedirs(BERT_DATA_DIR, exist_ok=True)
@@ -256,6 +258,7 @@ if __name__ == '__main__':
 
 
     # python make_data.py -task test_bert
+    # Make bert input file for test from df file
     elif args.task  == 'test_bert':
         os.makedirs(JSON_DATA_DIR, exist_ok=True)
         os.makedirs(BERT_DATA_DIR, exist_ok=True)
@@ -286,40 +289,3 @@ if __name__ == '__main__':
             + f" -save_path {bert_data_dir}"
             + f" -log_file {LOG_PREPO_FILE}"
             + f" -lower -n_cpus {args.n_cpus}")
-
-
-    # elif args.task  == 'train_bert':
-    #     train_df = pd.read_pickle(f"{RAW_DATA_DIR}/{TASK}/train_df.pickle")
-    #     valid_df = pd.read_pickle(f"{RAW_DATA_DIR}/{TASK}/valid_df.pickle")
-    #     test_df = pd.read_pickle(f"{RAW_DATA_DIR}/{TASK}/test_df.pickle")
-
-    #     # Convert df to json files
-    #     create_json_files(train_df, data_type='train', target_summary_sent=args.target_summary_sent, path=JSON_DATA_DIR)
-    #     create_json_files(valid_df, data_type='valid', target_summary_sent=args.target_summary_sent, path=JSON_DATA_DIR)
-    #     create_json_files(test_df, data_type='test', path=JSON_DATA_DIR)
-
-    #     ## Convert json to bert.pt files
-    #     for data_type in ['train', 'valid', 'test']:
-    #         bert_data_dir = f"{BERT_DATA_DIR}/{data_type}" if data_type == 'test' /
-    #                     else f"{BERT_DATA_DIR}/{data_type}_{args.by}"
-
-    #         # bert_data dir check and remove files if exist
-    #         # 동일한 파일명 존재하면 덮어쓰는게 아니라 ignore됨에 따라 폴더 내 삭제 후 만들어주기
-    #         if os.path.exists(bert_data_dir):
-    #             os.system(f"rm {bert_data_dir}/*")
-    #         else:
-    #             os.mkdir(bert_data_dir)
-            
-    #         os.system(f"python preprocess.py"
-    #             + f" -mode format_to_bert -dataset {data_type}"
-    #             + f" -raw_path {JSON_DATA_DIR}/{bert_data_dir_names}"
-    #             + f" -save_path {bert_data_dir}"
-    #             + f" -log_file {LOG_PREPO_FILE}"
-    #             + f" -lower -n_cpus 24")
-
-
-    #     os.system(f"rm {BERT_DATA_DIR}/test/*")
-    #     os.system(f"python preprocess.py"
-    #         + f" -mode format_to_bert -dataset test"
-    #         + f" -raw_path {JSON_DATA_DIR}/test -save_path {BERT_DATA_DIR}/test -log_file {LOG_PREPO_FILE}"
-    #         + f" -lower -n_cpus 24")
