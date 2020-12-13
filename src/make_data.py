@@ -1,7 +1,7 @@
 import os
 import sys
 import re
-import MeCab
+#import MeCab
 from bs4 import BeautifulSoup
 import kss
 import json
@@ -11,40 +11,45 @@ from tqdm import tqdm
 import argparse
 import pickle
 
-PROJECT_DIR = '/home/uoneway/Project/PreSumm_ko'
-DATA_DIR = PROJECT_DIR + '/data'
+PROBLEM = 'ext'
+
+## 사용할 path 정의
+# PROJECT_DIR = '/home/uoneway/Project/PreSumm_ko'
+PROJECT_DIR = '..'
+
+DATA_DIR = f'{PROJECT_DIR}/{PROBLEM}/data'
 RAW_DATA_DIR = DATA_DIR + '/raw'
 JSON_DATA_DIR = DATA_DIR + '/json_data'
 BERT_DATA_DIR = DATA_DIR + '/bert_data' 
-MODEL_DIR = PROJECT_DIR + '/models'  
-LOG_FILE = PROJECT_DIR + '/logs/preprocessing.log' # logs -> for storing logs information during preprocess and finetuning
+LOG_DIR = f'{PROJECT_DIR}/{PROBLEM}/logs'
+LOG_PREPO_FILE = LOG_DIR + '/preprocessing.log' 
 
 
 # special_symbols_in_dict = ['!', '"', '#', '$', '%', '&', "'", '(', ')', '*', '+', ',', '-']
 # unused_tags = ['SF', 'SE', 'SSO', 'SSC', 'SC', 'SY']
-def korean_tokenizer(text, unused_tags=None, print_tag=False): 
-    # assert if use_tags is None or unuse_tags is None
+# def korean_tokenizer(text, unused_tags=None, print_tag=False): 
+#     # assert if use_tags is None or unuse_tags is None
     
-    tokenizer = MeCab.Tagger("-d /usr/local/lib/mecab/dic/mecab-ko-dic")
-    parsed = tokenizer.parse(text)
-    word_tag = [w for w in parsed.split("\n")]
-    result = []
+#     tokenizer = MeCab.Tagger("-d /usr/local/lib/mecab/dic/mecab-ko-dic")
+#     parsed = tokenizer.parse(text)
+#     word_tag = [w for w in parsed.split("\n")]
+#     result = []
     
-    if unused_tags:
-        for word_ in word_tag[:-2]:
-            word = word_.split("\t")
-            tag = word[1].split(",")[0]
-            if tag not in unused_tags:
-                if print_tag:
-                    result.append((word[0], tag))
-                else:
-                    result.append(word[0]) 
-    else:
-        for word_ in word_tag[:-2]:
-            word = word_.split("\t")
-            result.append(word[0]) 
+#     if unused_tags:
+#         for word_ in word_tag[:-2]:
+#             word = word_.split("\t")
+#             tag = word[1].split(",")[0]
+#             if tag not in unused_tags:
+#                 if print_tag:
+#                     result.append((word[0], tag))
+#                 else:
+#                     result.append(word[0]) 
+#     else:
+#         for word_ in word_tag[:-2]:
+#             word = word_.split("\t")
+#             result.append(word[0]) 
 
-    return result
+#     return result
 
 def number_split(sentence):
     # 1. 공백 이후 숫자로 시작하는 경우만(문자+숫자+문자, 문자+숫자 케이스는 제외), 해당 숫자와 그 뒤 문자를 분리
@@ -170,91 +175,117 @@ def create_json_files(df, data_type='train', target_summary_sent=None, path=''):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("-make", default=None, type=str) #, choices=['data', 'train', 'test'])
-    parser.add_argument("-by", default=None, type=str)
+    parser.add_argument("-task", default=None, type=str, choices=['df', 'train_bert', 'test_bert'])
     parser.add_argument("-target_summary_sent", default='abs', type=str)
+    parser.add_argument("-n_cpus", default='2', type=str)
 
-    
     args = parser.parse_args()
-    TASK = 'ext'
 
-    # python make_data.py -make train_df
-    if args.make == 'train_df': # valid_df
-        with open(f"{RAW_DATA_DIR}/{TASK}/train.jsonl", 'r') as json_file:
-            json_list = list(json_file)
+    # python make_data.py -make df
+    # Convert raw data to df
+    if args.task == 'df': # and valid_df
+        os.makedirs(DATA_DIR, exist_ok=True)
+        os.makedirs(RAW_DATA_DIR, exist_ok=True)
+
+        # import data
+        with open(f'{RAW_DATA_DIR}/train.jsonl', 'r') as json_file:
+            train_json_list = list(json_file)
+        with open(f'{RAW_DATA_DIR}/extractive_test_v2.jsonl', 'r') as json_file:
+            test_json_list = list(json_file)
 
         trains = []
-        for json_str in json_list:
+        for json_str in train_json_list:
             line = json.loads(json_str)
             trains.append(line)
+        tests = []
+        for json_str in test_json_list:
+            line = json.loads(json_str)
+            tests.append(line)
 
+        # Convert raw data to df
         df = pd.DataFrame(trains)
         df['extractive_sents'] = df.apply(lambda row: list(np.array(row['article_original'])[row['extractive']]) , axis=1)
 
-        # randomly split
+        # random split
         train_df = df.sample(frac=0.95,random_state=42) #random state is a seed value
         valid_df = df.drop(train_df.index)
         train_df.reset_index(inplace=True, drop=True)
         valid_df.reset_index(inplace=True, drop=True)
 
-        train_df.to_pickle(f"{RAW_DATA_DIR}/{TASK}/train_df.pickle")
-        valid_df.to_pickle(f"{RAW_DATA_DIR}/{TASK}/valid_df.pickle")
+        test_df = pd.DataFrame(tests)
+
+        # save df
+        train_df.to_pickle(f"{RAW_DATA_DIR}/train_df.pickle")
+        valid_df.to_pickle(f"{RAW_DATA_DIR}/valid_df.pickle")
+        test_df.to_pickle(f"{RAW_DATA_DIR}/test_df.pickle")
         print(f'train_df({len(train_df)}) is exported')
         print(f'valid_df({len(valid_df)}) is exported')
-
-    # python make_data.py -make train -by abs
-    elif args.make  == 'train': # valid
-        # train_df = pd.read_pickle(f"{RAW_DATA_DIR}/{TASK}/train_df.pickle")
-        # valid_df = pd.read_pickle(f"{RAW_DATA_DIR}/{TASK}/valid_df.pickle")
-
-        # # make json file
-        # create_json_files(train_df, data_type='train', target_summary_sent=args.by, path=JSON_DATA_DIR)
-        # create_json_files(valid_df, data_type='valid', target_summary_sent=args.by, path=JSON_DATA_DIR)
- 
-        # ## make bert data
-        # 동일한 파일명 존재하면 덮어쓰는게 아니라 넘어감
-        os.system(f"rm {BERT_DATA_DIR}/train_{args.by}/*")
-        os.system(f"python preprocess.py \
-                -mode format_to_bert -dataset train\
-                -raw_path {JSON_DATA_DIR}/train_{args.by} -save_path {BERT_DATA_DIR}/train_{args.by} -log_file {LOG_FILE} \
-                -lower -n_cpus 24")
-        os.system(f"rm {BERT_DATA_DIR}/valid_{args.by}/*")
-        os.system(f"python preprocess.py \
-                -mode format_to_bert -dataset valid \
-                -raw_path {JSON_DATA_DIR}/valid_{args.by} -save_path {BERT_DATA_DIR}/valid_{args.by} -log_file {LOG_FILE} \
-                -lower -n_cpus 24")
-
-    # python make_data.py -make test
-    elif args.make == 'test':
-        with open(RAW_DATA_DIR + '/ext/extractive_test_v2.jsonl', 'r') as json_file:
-            json_list = list(json_file)
-
-        tests = []
-        for json_str in json_list:
-            line = json.loads(json_str)
-            tests.append(line)
-
-        test_df = pd.DataFrame(tests)
-        create_json_files(test_df, data_type='test', path=JSON_DATA_DIR)
-
-        os.system(f"rm {BERT_DATA_DIR}/test/*")
-        os.system(f"python preprocess.py \
-                -mode format_to_bert -dataset test \
-                -raw_path {JSON_DATA_DIR}/test -save_path {BERT_DATA_DIR}/test -log_file {LOG_FILE} \
-                -lower -n_cpus 24")
-
-
-    elif args.make  == 'test_prepro': # valid
-        train_df = pd.read_csv(f"{RAW_DATA_DIR}/{TASK}/train_df.csv")[:10]
-        # train_df['article_original_prepro'] = train_df['article_original'].apply(lambda sent_list: [sent_list])
-        # train_df['article_original_prepro_mecab'] = train_df['article_original'].apply(lambda sent_list:  
+        print(f'test_df({len(test_df)}) is exported')
         
-        # train_df.to_csv(f"{RAW_DATA_DIR}/temp/train_df.csv", index=False, encoding="utf-8-sig")
-        # original_sents_list_simple = [preprocessing(original_sent)
-        #                         for original_sent in row['article_original']]
-        # print(original_sents_list_simple)
-        # original_sents_list_mecab = [preprocessing(original_sent, korean_tokenizer).split()
-        #                         for original_sent in row['article_original']]
-        # print(list(zip(original_sents_list_simple, original_sents_list_mecab)))
+    # python make_data.py -make bert -by abs
+    # Make bert input file for train and valid from df file
+    elif args.task  == 'train_bert':
+        os.makedirs(JSON_DATA_DIR, exist_ok=True)
+        os.makedirs(BERT_DATA_DIR, exist_ok=True)
+        os.makedirs(LOG_DIR, exist_ok=True)
+
+        for data_type in ['train', 'valid']:
+            df = pd.read_pickle(f"{RAW_DATA_DIR}/{data_type}_df.pickle")
+
+            ## make json file
+            # 동일한 파일명 존재하면 덮어쓰는게 아니라 ignore됨에 따라 폴더 내 삭제 후 만들어주기
+            json_data_dir = f"{JSON_DATA_DIR}/{data_type}_{args.target_summary_sent}"
+            if os.path.exists(json_data_dir):
+                os.system(f"rm {json_data_dir}/*")
+            else:
+                os.mkdir(json_data_dir)
+
+            create_json_files(df, data_type=data_type, target_summary_sent=args.target_summary_sent, path=JSON_DATA_DIR)
+           
+            ## Convert json to bert.pt files
+            bert_data_dir = f"{BERT_DATA_DIR}/{data_type}_{args.target_summary_sent}"
+            if os.path.exists(bert_data_dir):
+                os.system(f"rm {bert_data_dir}/*")
+            else:
+                os.mkdir(bert_data_dir)
+            
+            os.system(f"python preprocess.py"
+                + f" -mode format_to_bert -dataset {data_type}"
+                + f" -raw_path {json_data_dir}"
+                + f" -save_path {bert_data_dir}"
+                + f" -log_file {LOG_PREPO_FILE}"
+                + f" -lower -n_cpus {args.n_cpus}")
 
 
+    # python make_data.py -task test_bert
+    # Make bert input file for test from df file
+    elif args.task  == 'test_bert':
+        os.makedirs(JSON_DATA_DIR, exist_ok=True)
+        os.makedirs(BERT_DATA_DIR, exist_ok=True)
+        os.makedirs(LOG_DIR, exist_ok=True)
+
+        test_df = pd.read_pickle(f"{RAW_DATA_DIR}/test_df.pickle")
+
+        ## make json file
+        # 동일한 파일명 존재하면 덮어쓰는게 아니라 ignore됨에 따라 폴더 내 삭제 후 만들어주기
+        json_data_dir = f"{JSON_DATA_DIR}/test"
+        if os.path.exists(json_data_dir):
+            os.system(f"rm {json_data_dir}/*")
+        else:
+            os.mkdir(json_data_dir)
+
+        create_json_files(test_df, data_type='test', path=JSON_DATA_DIR)
+        
+        ## Convert json to bert.pt files
+        bert_data_dir = f"{BERT_DATA_DIR}/test"
+        if os.path.exists(bert_data_dir):
+            os.system(f"rm {bert_data_dir}/*")
+        else:
+            os.mkdir(bert_data_dir)
+        
+        os.system(f"python preprocess.py"
+            + f" -mode format_to_bert -dataset test"
+            + f" -raw_path {json_data_dir}"
+            + f" -save_path {bert_data_dir}"
+            + f" -log_file {LOG_PREPO_FILE}"
+            + f" -lower -n_cpus {args.n_cpus}")

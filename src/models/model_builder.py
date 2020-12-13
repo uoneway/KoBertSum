@@ -115,10 +115,10 @@ def get_generator(vocab_size, dec_hidden_size, device):
 class Bert(nn.Module):
     def __init__(self, large, temp_dir, finetune=False):
         super(Bert, self).__init__()
-        if(large):
-            self.model = BertModel.from_pretrained('bert-large-uncased', cache_dir=temp_dir)
-        else:
-            self.model = BertModel.from_pretrained("monologg/kobert", cache_dir=temp_dir)
+        # if(large):
+        #     self.model = BertModel.from_pretrained('bert-large-uncased', cache_dir=temp_dir)
+        # else:
+        self.model = BertModel.from_pretrained("monologg/kobert", cache_dir=temp_dir)
 
         self.finetune = finetune
 

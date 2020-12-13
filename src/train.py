@@ -7,7 +7,7 @@ from __future__ import division
 import argparse
 import os
 from others.logging import init_logger
-from train_abstractive import validate_abs, train_abs, baseline, test_abs, test_text_abs
+#from train_abstractive import validate_abs, train_abs, baseline, test_abs, test_text_abs
 from train_extractive import train_ext, validate_ext, test_ext
 
 model_flags = ['hidden_size', 'ff_size', 'heads', 'emb_size', 'enc_layers', 'enc_hidden_size', 'enc_ff_size',
@@ -117,31 +117,32 @@ if __name__ == '__main__':
     device = "cpu" if args.visible_gpus == '-1' else "cuda"
     device_id = 0 if device == "cuda" else -1
 
-    if (args.task == 'abs'):
-        if (args.mode == 'train'):
-            train_abs(args, device_id)
-        elif (args.mode == 'validate'):
-            validate_abs(args, device_id)
-        elif (args.mode == 'lead'):
-            baseline(args, cal_lead=True)
-        elif (args.mode == 'oracle'):
-            baseline(args, cal_oracle=True)
-        if (args.mode == 'test'):
-            cp = args.test_from
-            try:
-                step = int(cp.split('.')[-2].split('_')[-1])
-            except:
-                step = 0
-            test_abs(args, device_id, cp, step)
-        elif (args.mode == 'test_text'):
-            cp = args.test_from
-            try:
-                step = int(cp.split('.')[-2].split('_')[-1])
-            except:
-                step = 0
-                test_text_abs(args, device_id, cp, step)
+    # if (args.task == 'abs'):
+    #     if (args.mode == 'train'):
+    #         train_abs(args, device_id)
+    #     elif (args.mode == 'validate'):
+    #         validate_abs(args, device_id)
+    #     elif (args.mode == 'lead'):
+    #         baseline(args, cal_lead=True)
+    #     elif (args.mode == 'oracle'):
+    #         baseline(args, cal_oracle=True)
+    #     if (args.mode == 'test'):
+    #         cp = args.test_from
+    #         try:
+    #             step = int(cp.split('.')[-2].split('_')[-1])
+    #         except:
+    #             step = 0
+    #         test_abs(args, device_id, cp, step)
+    #     elif (args.mode == 'test_text'):
+    #         cp = args.test_from
+    #         try:
+    #             step = int(cp.split('.')[-2].split('_')[-1])
+    #         except:
+    #             step = 0
+    #             test_text_abs(args, device_id, cp, step)
 
-    elif (args.task == 'ext'):
+    # elif (args.task == 'ext'):
+    if (args.task == 'ext'):
         if (args.mode == 'train'):
             train_ext(args, device_id)
         elif (args.mode == 'validate'):

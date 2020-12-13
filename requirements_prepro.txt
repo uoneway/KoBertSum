@@ -1,4 +1,4 @@
-Cython
+#Cython
 kss
 bs4
 pandas
@@ -6,3 +6,4 @@ pandas
 # test
 # py-rouge
 nltk
+konlpy
