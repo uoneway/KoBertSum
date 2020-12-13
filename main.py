@@ -89,7 +89,7 @@ if __name__ == '__main__':
         """
         python train.py -task abs -mode validate -batch_size 3000 -test_batch_size 500 
         -bert_data_path BERT_DATA_PATH -log_file ../logs/val_abs_bert_cnndm -model_path MODEL_PATH -result_path ../logs/abs_bert_cnndm 
-        -sep_optim true -use_interval true -visible_gpus 1 
+        -sep_optim true -use_interval true -visible_gpus 0,1
         -max_pos 512 -max_length 200 -alpha 0.95 -min_length 50 
         -max_pos 512 -min_length 20 -max_length 100 -alpha 0.9 
         """
@@ -99,13 +99,13 @@ if __name__ == '__main__':
             + f" -result_path {RESULT_DIR}/result_{args.model_path}"
             + f" -log_file {LOG_DIR}/valid_{args.model_path}.log"
             + f" -test_batch_size 500  -batch_size 3000"
-            + f" -sep_optim true -use_interval true -visible_gpus 0,1"
+            + f" -sep_optim true -use_interval true -visible_gpus {args.visible_gpus}"
             + f" -max_pos 512 -max_length 200 -alpha 0.95 -min_length 50"
             + f" -report_rouge False"
             + f" -max_tgt_len 100"
         )
 
-    # python main.py -task test -test_from 1209_1236/model_step_7000.pt
+    # python main.py -task test -test_from 1209_1236/model_step_7000.pt -visible_gpus 0
     elif args.task == 'test':
         os.chdir(PROJECT_DIR + '/src')
         
@@ -118,7 +118,7 @@ if __name__ == '__main__':
             -result_path {RESULT_DIR}/result_{model_folder} \
             -log_file {LOG_DIR}/test_{model_folder}.log \
             -test_batch_size 1  -batch_size 3000 \
-            -sep_optim true -use_interval true -visible_gpus 0,1 \
+            -sep_optim true -use_interval true -visible_gpus {args.visible_gpus} \
             -max_pos 512 -max_length 200 -alpha 0.95 -min_length 50 \
             -report_rouge False \
             -max_tgt_len 100
@@ -126,7 +126,7 @@ if __name__ == '__main__':
         # -max_pos 512 -max_length 200 -alpha 0.95 -min_length 50 \
         # -report_rouge True  \
         #  -model_path {MODEL_DIR} 
-        # args.max_tgt_len=140  이거 수정해도 효과가 거의
+        # args.max_tgt_len=140  이거 수정해도 효과가 거의 없음
 
         os.system(f"python make_submission.py result_{model_folder}_{model_name}.candidate")
 

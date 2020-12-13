@@ -4,21 +4,29 @@ import pandas as pd
 import time
 import re
 import sys
+import os
 
-PROJECT_DIR = '/home/uoneway/Project/PreSumm_ko'
-DATA_DIR = PROJECT_DIR + '/data'
+PROBLEM = 'ext'
+
+## 사용할 path 정의
+# PROJECT_DIR = '/home/uoneway/Project/PreSumm_ko'
+PROJECT_DIR = '..'
+print(PROJECT_DIR)
+
+DATA_DIR = f'{PROJECT_DIR}/{PROBLEM}/data'
 RAW_DATA_DIR = DATA_DIR + '/raw'
 JSON_DATA_DIR = DATA_DIR + '/json_data'
 BERT_DATA_DIR = DATA_DIR + '/bert_data' 
+LOG_DIR = f'{PROJECT_DIR}/{PROBLEM}/logs'
+LOG_PREPO_FILE = LOG_DIR + '/preprocessing.log' 
 
-MODEL_DIR = PROJECT_DIR + '/models'  
-LOG_DIR = PROJECT_DIR + '/logs' # logs -> for storing logs information during preprocess and finetuning
-RESULT_DIR = PROJECT_DIR + '/results' 
+MODEL_DIR = f'{PROJECT_DIR}/{PROBLEM}/models' 
+RESULT_DIR = f'{PROJECT_DIR}/{PROBLEM}/results' 
 
-# python make_submission.py result_1207_1054_step_24000.candidate
+# python make_submission.py result_1209_1236_step_7000.candidate
 if __name__ == '__main__':
     # test set
-    with open(RAW_DATA_DIR + '/ext/extractive_test_v2.jsonl', 'r') as json_file:
+    with open(RAW_DATA_DIR + '/extractive_test_v2.jsonl', 'r') as json_file:
         json_list = list(json_file)
 
     tests = []
@@ -42,7 +50,7 @@ if __name__ == '__main__':
 
     result_df = pd.merge(test_df, pd.DataFrame(test_pred_list), how="left", left_index=True, right_index=True)
     result_df['summary'] = result_df.apply(lambda row: '\n'.join(list(np.array(row['article_original'])[row['sum_sents_idxes']])) , axis=1)
-    submit_df = pd.read_csv(RAW_DATA_DIR + '/ext/extractive_sample_submission_v2.csv')
+    submit_df = pd.read_csv(RAW_DATA_DIR + '/extractive_sample_submission_v2.csv')
     submit_df.drop(['summary'], axis=1, inplace=True)
 
     print(result_df['id'].dtypes)
