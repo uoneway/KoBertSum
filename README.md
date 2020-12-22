@@ -1,181 +1,90 @@
-# PreSumm
-
-**This code is for EMNLP 2019 paper [Text Summarization with Pretrained Encoders](https://arxiv.org/abs/1908.08345)**
-
-**Updates Jan 22 2020**: Now you can **Summarize Raw Text Input!**. Swith to the dev branch, and use `-mode test_text` and use `-text_src $RAW_SRC.TXT` to input your text file. Please still use master branch for normal training and evaluation, dev branch should be only used for test_text mode.
-* abstractive use -task abs, extractive use -task ext
-* use `-test_from $PT_FILE$` to use your model checkpoint file.
-* Format of the source text file:
-  * For **abstractive summarization**, each line is a document.
-  * If you want to do **extractive summarization**, please insert ` [CLS] [SEP] ` as your sentence boundaries.
-* There are example input files in the [raw_data directory](https://github.com/nlpyang/PreSumm/tree/dev/raw_data)
-* If you also have reference summaries aligned with your source input, please use `-text_tgt $RAW_TGT.TXT` to keep the order for evaluation.
 
 
-Results on CNN/DailyMail (20/8/2019):
+# KoBertSum
 
+## 모델 소개
 
-<table class="tg">
-  <tr>
-    <th class="tg-0pky">Models</th>
-    <th class="tg-0pky">ROUGE-1</th>
-    <th class="tg-0pky">ROUGE-2</th>
-    <th class="tg-0pky">ROUGE-L</th>
-  </tr>
-  <tr>
-    <td class="tg-c3ow" colspan="4">Extractive</td>
-  </tr>
-  <tr>
-    <td class="tg-0pky">TransformerExt</td>
-    <td class="tg-0pky">40.90</td>
-    <td class="tg-0pky">18.02</td>
-    <td class="tg-0pky">37.17</td>
-  </tr>
-  <tr>
-    <td class="tg-0pky">BertSumExt</td>
-    <td class="tg-0pky">43.23</td>
-    <td class="tg-0pky">20.24</td>
-    <td class="tg-0pky">39.63</td>
-  </tr>
-  <tr>
-    <td class="tg-0pky">BertSumExt (large)</td>
-    <td class="tg-0pky">43.85</td>
-    <td class="tg-0pky">20.34</td>
-    <td class="tg-0pky">39.90</td>
-  </tr>
-  <tr>
-    <td class="tg-baqh" colspan="4">Abstractive</td>
-  </tr>
-  <tr>
-    <td class="tg-0lax">TransformerAbs</td>
-    <td class="tg-0lax">40.21</td>
-    <td class="tg-0lax">17.76</td>
-    <td class="tg-0lax">37.09</td>
-  </tr>
-  <tr>
-    <td class="tg-0lax">BertSumAbs</td>
-    <td class="tg-0lax">41.72</td>
-    <td class="tg-0lax">19.39</td>
-    <td class="tg-0lax">38.76</td>
-  </tr>
-  <tr>
-    <td class="tg-0lax">BertSumExtAbs</td>
-    <td class="tg-0lax">42.13</td>
-    <td class="tg-0lax">19.60</td>
-    <td class="tg-0lax">39.18</td>
-  </tr>
-</table>
+### KoBertSum이란?
 
-**Python version**: This code is in Python3.6
+KoBERTSUM은 [BertSum모델](https://github.com/nlpyang/PreSumm)을 한국어 데이터에 적용할 수 있도록 수정한 한국어 요약 모델입니다.
 
-**Package Requirements**: torch==1.1.0 pytorch_transformers tensorboardX multiprocess pyrouge
+- 현재 Pre-trained BERT로 [KoBERT](https://github.com/SKTBrain/KoBERT)를 이용합니다. 원활한 연결을 위해 [Transformers(](https://github.com/monologg/KoBERT-Transformers)[monologg](https://github.com/monologg/KoBERT-Transformers)[)](https://github.com/monologg/KoBERT-Transformers)를 통해 Huggingface transformers 라이브러리를 사용합니다.
+- 현재 Data는 한국어 문서 추출요약 AI 경진대회(~ 2020.12.09)에서 사용된 [Bflysoft-뉴스기사 데이터셋](https://dacon.io/competitions/official/235671/data/)에 맞춰져 있습니다.
 
+추후 다른 Pre-trained BERT 및 데이터셋을 쉽게 활용할 수 있도록 확장할 계획입니다.
 
+### BertSum이란?
 
-**Updates**: For encoding a text longer than 512 tokens, for example 800. Set max_pos to 800 during both preprocessing and training.
+BertSum은 BERT 위에 inter-sentence Transformer 2-layers 를 얹은 구조를 갖습니다. 이를 fine-tuning하여 extract summarization을 수행하는 `BertSumExt`, abstract summarization task를 수행하는 `BertSumAbs` 및 `BertSumExtAbs` 요약모델을 포함하고 있습니다.
 
+- 논문:  [Text Summarization with Pretrained Encoders](https://arxiv.org/abs/1908.08345) (EMNLP 2019 paper)
+- 원코드: https://github.com/nlpyang/PreSumm
 
-Some codes are borrowed from ONMT(https://github.com/OpenNMT/OpenNMT-py)
+기 Pre-trained BERT를 summarization task 수행을 위한 embedding layer로 활용하기 위해서는 여러 sentence를 하나의 인풋으로 넣어주고, 각 sentence에 대한 정보를 출력할 수 있도록 입력을 수정해줘야 합니다. 이를 위해
 
-## Trained Models
-[CNN/DM BertExt](https://drive.google.com/open?id=1kKWoV0QCbeIuFt85beQgJ4v0lujaXobJ)
+- Input document에서 매 문장의 앞에 [CLS] 토큰을 삽입하고
+    ( [CLS] 토큰에 대응하는 BERT 결과값(T[CLS])을 각 문장별 representation으로 간주)
 
-[CNN/DM BertExtAbs](https://drive.google.com/open?id=1-IKVCtc4Q-BdZpjXc4s70_fRsWnjtYLr)
+- 매 sentence마다 다른 segment embeddings 토큰을 더해주는 interval segment embeddings을 추가합니다.
 
-[CNN/DM TransformerAbs](https://drive.google.com/open?id=1yLCqT__ilQ3mf5YUUCw9-UToesX5Roxy)
+  ![BERTSUM_structure](tutorials/images/BERTSUM_structure.PNG)
 
-[XSum BertExtAbs](https://drive.google.com/open?id=1H50fClyTkNprWJNh10HWdGEdDdQIkzsI)
+## Usage
 
-## System Outputs
+1. 필요 라이브러리 설치
 
-[CNN/DM and XSum](https://drive.google.com/file/d/1kYA384UEAQkvmZ-yWZAfxw7htCbCwFzC) 
+    ```
+    python main.py -task install
+    ```
 
-## Data Preparation For XSum
-[Pre-processed data](https://drive.google.com/open?id=1BWBN1coTWGBqrWoOfRc5dhojPHhatbYs)
+2. 데이터 Preprocessing
 
+   데이터를 `ext/data/raw` 에 넣어준 후 다음을 실행하여 BERT 입력을 위한 형태로 변환합니다.
 
-## Data Preparation For CNN/Dailymail
-### Option 1: download the processed data
+   - `n_cpus`: 연산에 이용할 CPU 수
 
-[Pre-processed data](https://drive.google.com/open?id=1DN7ClZCCXsk2KegmC6t4ClBwtAf5galI)
+    ```
+    python main.py -task make_data -n_cpus 2
+    ```
+   
+   결과는 `ext/data/bert_data/train_abs` 및  `ext/data/bert_data/valid_abs` 에 저장됩니다.
+   
+3. Fine-tuning
 
-unzip the zipfile and put all `.pt` files into `bert_data`
+    KoBERT 모델을 기반으로 fine-tuning을 진행하고, 1,000 step마다  Fine-tuned model 파일(`.pt`)을 저장합니다. 
 
-### Option 2: process the data yourself
+    - `target_summary_sent`: `abs` 또는 `ext` . 
+    - `visible_gpus`: 연산에 이용할 gpu index를 입력. 
+      예) (GPU 3개를 이용할 경우): `0,1,2`
 
-#### Step 1 Download Stories
-Download and unzip the `stories` directories from [here](http://cs.nyu.edu/~kcho/DMQA/) for both CNN and Daily Mail. Put all  `.story` files in one directory (e.g. `../raw_stories`)
+    ```
+    python main.py -task train -target_summary_sent abs -visible_gpus 0
+    ```
 
-####  Step 2. Download Stanford CoreNLP
-We will need Stanford CoreNLP to tokenize the data. Download it [here](https://stanfordnlp.github.io/CoreNLP/) and unzip it. Then add the following command to your bash_profile:
-```
-export CLASSPATH=/path/to/stanford-corenlp-full-2017-06-09/stanford-corenlp-3.8.0.jar
-```
-replacing `/path/to/` with the path to where you saved the `stanford-corenlp-full-2017-06-09` directory. 
+    결과는  `models` 폴더 내 finetuning이 실행된 시간을 폴더명으로 가진 폴더에 저장됩니다. 
 
-####  Step 3. Sentence Splitting and Tokenization
+4. Validation
 
-```
-python preprocess.py -mode tokenize -raw_path RAW_PATH -save_path TOKENIZED_PATH
-```
+   Fine-tuned model마다 validation data set을 통해 inference를 시행하고, loss 값을 확인합니다.
 
-* `RAW_PATH` is the directory containing story files (`../raw_stories`), `JSON_PATH` is the target directory to save the generated json files (`../merged_stories_tokenized`)
+   - `model_path`:  model 파일(`.pt`)이 저장된 폴더 경로
 
+   ```
+   python main.py -task valid -model_path 1209_1236
+   ```
 
-####  Step 4. Format to Simpler Json Files
- 
-```
-python preprocess.py -mode format_to_lines -raw_path RAW_PATH -save_path JSON_PATH -n_cpus 1 -use_bert_basic_tokenizer false -map_path MAP_PATH
-```
+   결과는 `ext/logs` 폴더 내 `valid_1209_1236.log` 형태로 저장됩니다.
 
-* `RAW_PATH` is the directory containing tokenized files (`../merged_stories_tokenized`), `JSON_PATH` is the target directory to save the generated json files (`../json_data/cnndm`), `MAP_PATH` is the  directory containing the urls files (`../urls`)
+5. Inference & make submission file
 
-####  Step 5. Format to PyTorch Files
-```
-python preprocess.py -mode format_to_bert -raw_path JSON_PATH -save_path BERT_DATA_PATH  -lower -n_cpus 1 -log_file ../logs/preprocess.log
-```
+    Validation을 통해 확인한 가장 성능이 우수한 model파일을 통해 실제로 텍스트 요약 과업을 수행합니다.
 
-* `JSON_PATH` is the directory containing json files (`../json_data`), `BERT_DATA_PATH` is the target directory to save the generated binary files (`../bert_data`)
+    - `test_from`:  model 파일(`.pt`) 경로
+    - `visible_gpus`: 연산에 이용할 gpu index를 입력. 
+      예) (GPU 3개를 이용할 경우): `0,1,2`
 
-## Model Training
+    ```
+    python main.py -task test -test_from 1209_1236/model_step_7000.pt -visible_gpus 0
+    ```
 
-**First run: For the first time, you should use single-GPU, so the code can download the BERT model. Use ``-visible_gpus -1``, after downloading, you could kill the process and rerun the code with multi-GPUs.**
-
-### Extractive Setting
-
-```
-python train.py -task ext -mode train -bert_data_path BERT_DATA_PATH -ext_dropout 0.1 -model_path MODEL_PATH -lr 2e-3 -visible_gpus 0,1,2 -report_every 50 -save_checkpoint_steps 1000 -batch_size 3000 -train_steps 50000 -accum_count 2 -log_file ../logs/ext_bert_cnndm -use_interval true -warmup_steps 10000 -max_pos 512
-```
-
-### Abstractive Setting
-
-#### TransformerAbs (baseline)
-```
-python train.py -mode train -accum_count 5 -batch_size 300 -bert_data_path BERT_DATA_PATH -dec_dropout 0.1 -log_file ../../logs/cnndm_baseline -lr 0.05 -model_path MODEL_PATH -save_checkpoint_steps 2000 -seed 777 -sep_optim false -train_steps 200000 -use_bert_emb true -use_interval true -warmup_steps 8000  -visible_gpus 0,1,2,3 -max_pos 512 -report_every 50 -enc_hidden_size 512  -enc_layers 6 -enc_ff_size 2048 -enc_dropout 0.1 -dec_layers 6 -dec_hidden_size 512 -dec_ff_size 2048 -encoder baseline -task abs
-```
-#### BertAbs
-```
-python train.py  -task abs -mode train -bert_data_path BERT_DATA_PATH -dec_dropout 0.2  -model_path MODEL_PATH -sep_optim true -lr_bert 0.002 -lr_dec 0.2 -save_checkpoint_steps 2000 -batch_size 140 -train_steps 200000 -report_every 50 -accum_count 5 -use_bert_emb true -use_interval true -warmup_steps_bert 20000 -warmup_steps_dec 10000 -max_pos 512 -visible_gpus 0,1,2,3  -log_file ../logs/abs_bert_cnndm
-```
-#### BertExtAbs
-```
-python train.py  -task abs -mode train -bert_data_path BERT_DATA_PATH -dec_dropout 0.2  -model_path MODEL_PATH -sep_optim true -lr_bert 0.002 -lr_dec 0.2 -save_checkpoint_steps 2000 -batch_size 140 -train_steps 200000 -report_every 50 -accum_count 5 -use_bert_emb true -use_interval true -warmup_steps_bert 20000 -warmup_steps_dec 10000 -max_pos 512 -visible_gpus 0,1,2,3 -log_file ../logs/abs_bert_cnndm  -load_from_extractive EXT_CKPT   
-```
-* `EXT_CKPT` is the saved `.pt` checkpoint of the extractive model.
-
-
-
-
-## Model Evaluation
-### CNN/DM
-```
- python train.py -task abs -mode validate -batch_size 3000 -test_batch_size 500 -bert_data_path BERT_DATA_PATH -log_file ../logs/val_abs_bert_cnndm -model_path MODEL_PATH -sep_optim true -use_interval true -visible_gpus 1 -max_pos 512 -max_length 200 -alpha 0.95 -min_length 50 -result_path ../logs/abs_bert_cnndm 
-```
-### XSum
-```
- python train.py -task abs -mode validate -batch_size 3000 -test_batch_size 500 -bert_data_path BERT_DATA_PATH -log_file ../logs/val_abs_bert_cnndm -model_path MODEL_PATH -sep_optim true -use_interval true -visible_gpus 1 -max_pos 512 -min_length 20 -max_length 100 -alpha 0.9 -result_path ../logs/abs_bert_cnndm 
-```
-* `-mode` can be {`validate, test`}, where `validate` will inspect the model directory and evaluate the model for each newly saved checkpoint, `test` need to be used with `-test_from`, indicating the checkpoint you want to use
-* `MODEL_PATH` is the directory of saved checkpoints
-* use `-mode valiadte` with `-test_all`, the system will load all saved checkpoints and select the top ones to generate summaries (this will take a while)
-
+    결과는 `ext/data/results/` 폴더에 `result_1209_1236_step_7000.candidate`  및 `submission_날짜_시간.csv` 형태로 저장됩니다.
