@@ -40,7 +40,7 @@ BertSum은 BERT 위에 inter-sentence Transformer 2-layers 를 얹은 구조를 
 
 - 매 sentence마다 다른 segment embeddings 토큰을 더해주는 interval segment embeddings을 추가합니다.
 
-  ![BERTSUM_structure](C:\Users\uonew\Downloads\BERTSUM_structure.PNG)
+  ![BERTSUM_structure](tutorials/images/BERTSUM_structure.PNG)
 
 ## Usage
 
