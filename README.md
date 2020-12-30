@@ -6,7 +6,7 @@
 
 ### KoBertSum이란?
 
-KoBERTSUM은 [BertSum모델](https://github.com/nlpyang/PreSumm)을 한국어 데이터에 적용할 수 있도록 수정한 한국어 요약 모델입니다.
+KoBERTSUM은 ext 및 abs summarizatoin 분야에서 우수한 성능을 보여주고 있는 [BertSum모델](https://github.com/nlpyang/PreSumm)을 한국어 데이터에 적용할 수 있도록 수정한 한국어 요약 모델입니다.
 
 현재는
 
@@ -42,7 +42,7 @@ BertSum은 BERT 위에 inter-sentence Transformer 2-layers 를 얹은 구조를 
 
   ![BERTSUM_structure](tutorials/images/BERTSUM_structure.PNG)
 
-## Usage
+## Install
 
 1. 필요 라이브러리 설치
 
@@ -50,7 +50,9 @@ BertSum은 BERT 위에 inter-sentence Transformer 2-layers 를 얹은 구조를 
     python main.py -task install
     ```
 
-2. 데이터 Preprocessing
+## Usage
+
+1. 데이터 Preprocessing
 
    데이터를 `ext/data/raw` 에 넣어준 후 다음을 실행하여 BERT 입력을 위한 형태로 변환합니다.
 
@@ -62,7 +64,7 @@ BertSum은 BERT 위에 inter-sentence Transformer 2-layers 를 얹은 구조를 
    
    결과는 `ext/data/bert_data/train_abs` 및  `ext/data/bert_data/valid_abs` 에 저장됩니다.
    
-3. Fine-tuning
+2. Fine-tuning
 
     KoBERT 모델을 기반으로 fine-tuning을 진행하고, 1,000 step마다  Fine-tuned model 파일(`.pt`)을 저장합니다. 
 
@@ -76,7 +78,7 @@ BertSum은 BERT 위에 inter-sentence Transformer 2-layers 를 얹은 구조를 
 
     결과는  `models` 폴더 내 finetuning이 실행된 시간을 폴더명으로 가진 폴더에 저장됩니다. 
 
-4. Validation
+3. Validation
 
    Fine-tuned model마다 validation data set을 통해 inference를 시행하고, loss 값을 확인합니다.
 
@@ -88,7 +90,7 @@ BertSum은 BERT 위에 inter-sentence Transformer 2-layers 를 얹은 구조를 
 
    결과는 `ext/logs` 폴더 내 `valid_1209_1236.log` 형태로 저장됩니다.
 
-5. Inference & make submission file
+4. Inference & make submission file
 
     Validation을 통해 확인한 가장 성능이 우수한 model파일을 통해 실제로 텍스트 요약 과업을 수행합니다.
 
