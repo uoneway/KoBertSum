@@ -175,7 +175,7 @@ def create_json_files(df, data_type='train', target_summary_sent=None, path=''):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("-task", default=None, type=str, choices=['df', 'train_bert', 'test_bert'])
+    parser.add_argument("-mode", default=None, type=str, choices=['df', 'train_bert', 'test_bert'])
     parser.add_argument("-target_summary_sent", default='abs', type=str)
     parser.add_argument("-n_cpus", default='2', type=str)
 
@@ -183,7 +183,7 @@ if __name__ == '__main__':
 
     # python make_data.py -make df
     # Convert raw data to df
-    if args.task == 'df': # and valid_df
+    if args.mode == 'df': # and valid_df
         os.makedirs(DATA_DIR, exist_ok=True)
         os.makedirs(RAW_DATA_DIR, exist_ok=True)
 
@@ -224,7 +224,7 @@ if __name__ == '__main__':
         
     # python make_data.py -make bert -by abs
     # Make bert input file for train and valid from df file
-    elif args.task  == 'train_bert':
+    elif args.mode  == 'train_bert':
         os.makedirs(JSON_DATA_DIR, exist_ok=True)
         os.makedirs(BERT_DATA_DIR, exist_ok=True)
         os.makedirs(LOG_DIR, exist_ok=True)
@@ -257,9 +257,9 @@ if __name__ == '__main__':
                 + f" -lower -n_cpus {args.n_cpus}")
 
 
-    # python make_data.py -task test_bert
+    # python make_data.py -mode test_bert
     # Make bert input file for test from df file
-    elif args.task  == 'test_bert':
+    elif args.mode  == 'test_bert':
         os.makedirs(JSON_DATA_DIR, exist_ok=True)
         os.makedirs(BERT_DATA_DIR, exist_ok=True)
         os.makedirs(LOG_DIR, exist_ok=True)
