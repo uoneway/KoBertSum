@@ -1,0 +1,13 @@
+paths:
+  df_dir: df
+  json_dir: json_data
+  bert_dir: bert_data
+  log_file: data_prepro.log
+
+mode: raw_to_bert  # 'df', 'train_bert', 'test_bert'
+target_summary_sent: abs
+n_cpus: 2
+
+hydra:
+  run:
+    dir: datasets/${now:%Y-%m-%d}/${now:%H-%M-%S}
