@@ -10,8 +10,9 @@ import pandas as pd
 from tqdm import tqdm
 from omegaconf import DictConfig, OmegaConf
 import hydra
+import glob
+from src.others.logging import logger
 
-# paths = Paths()
 
 # special_symbols_in_dict = ['!', '"', '#', '$', '%', '&', "'", '(', ')', '*', '+', ',', '-']
 # unused_tags = ['SF', 'SE', 'SSO', 'SSC', 'SC', 'SY']
@@ -114,154 +115,125 @@ def korean_sent_spliter(doc):
         #print(sents_splited)
         return sents_splited
 
-def make_or_initial_dir(dir_path):
+
+def jsonl_to_df(cfg):
+    from_dir, to_dir = os.getcwd(), cfg.dirs.df
+    src_name, tgt_name, train_split_frac = cfg.src_name, cfg.tgt_name, cfg.train_split_frac
+
+    # import data
+    jsonl_file_paths = _get_file_paths(from_dir, '.jsonl')
+    if not jsonl_file_paths:
+        logger.error(f"There is no 'jsonl' files in {from_dir}")
+        sys.exit("Stop")
+
+    os.makedirs(to_dir, exist_ok=True)
+
+    for jsonl_file_path in jsonl_file_paths:
+        subdata_group = _get_subdata_group(jsonl_file_path)
+        logger.info(f"Start 'jsonl_to_df' processing for {jsonl_file_path}...")
+        _jsonl_to_df(jsonl_file_path, to_dir, src_name,
+                    tgt_name=tgt_name, train_split_frac=train_split_frac)
+
+def _jsonl_to_df(jsonl_file_path, to_dir, src_name, tgt_name=None, train_split_frac=1.0):
+    def save_df(df, to_dir):
+        from varname import argname
+        df_path = f"{to_dir}/{argname(df)}.pickle"
+        df.to_pickle(df_path)
+        logger.info(f'Done! {df_path}({len(df)} rows) is exported')
+
+    subdata_group = _get_subdata_group(jsonl_file_path)
+
+    with open(jsonl_file_path, 'r') as json_file:
+        json_list = list(json_file)
+
+    jsons = []
+    for json_str in json_list :
+        line = json.loads(json_str)
+        jsons.append(line)
+
+    # Convert jsonl to df
+    df = pd.DataFrame(jsons)
+    # print(df.head())
+
+    if subdata_group  in ['train', 'valid']:
+        # df['extractive_sents'] = df.apply(lambda row: list(np.array(row['article_original'])[row['extractive']]) , axis=1)
+        df = df[[src_name, tgt_name]]
+
+        if int(train_split_frac) != 1:  # train -> train / dev
+            # random split
+            train_df = df.sample(frac=train_split_frac,random_state=42) #random state is a seed value
+            valid_df = df.drop(train_df.index)
+            if len(train_df) > 0 :
+                train_df.reset_index(inplace=True, drop=True)
+                save_df(train_df, to_dir)
+            if len(valid_df) > 0 :
+                valid_df.reset_index(inplace=True, drop=True)
+                save_df(valid_df, to_dir)
+
+        else:  # train -> train 
+            train_df = df
+            save_df(train_df, to_dir)
+
+    else:  # test
+        test_df = df[[src_name]]
+        save_df(test_df, to_dir)        
+
+
+def _get_file_paths(dir='./', suffix: str=''):
+    file_paths = []
+    filename_pattern = f'*{suffix}' if suffix != '' \
+                    else '*' 
+
+    file_paths = glob.glob(os.path.join(dir, filename_pattern))
+
+    return file_paths
+
+def _make_or_initial_dir(dir_path):
     """
     Make dir(When dir exists, remove it and make it)
     """
     if os.path.exists(dir_path):
-        os.system(f"rm {dir_path}/*")
-    else:
-        os.mkdir(dir_path)
+        os.system(f"rm -rf {dir_path}/")
+        logger.info(f'{dir_path} folder is removed')
 
+    os.mkdir(dir_path)
+    logger.info(f'{dir_path} folder is made')
 
-def create_json_files(df, data_type='train', target_summary_sent=None, path=''):
-    NUM_DOCS_IN_ONE_FILE = 1000
-    start_idx_list = list(range(0, len(df), NUM_DOCS_IN_ONE_FILE))
+def _get_subdata_group(path):
+    filename = os.path.splitext(os.path.basename(path))[0] 
+    types = ['train', 'valid', 'test']
+    for type in types:
+        if type in filename:
+            return type
 
-    for start_idx in tqdm(start_idx_list):
-        end_idx = start_idx + NUM_DOCS_IN_ONE_FILE
-        if end_idx > len(df):
-            end_idx = len(df)  # -1로 하니 안됨...
-
-        #정렬을 위해 앞에 0 채워주기
-        length = len(str(len(df)))
-        start_idx_str = (length - len(str(start_idx)))*'0' + str(start_idx)
-        end_idx_str = (length - len(str(end_idx-1)))*'0' + str(end_idx-1)
-
-        file_name = f'{path}/{data_type}.{start_idx_str}_{end_idx_str}.json'
-        
-        json_list = []
-        for i, row in df.iloc[start_idx:end_idx].iterrows():
-            original_sents_list = [preprocessing(original_sent).split()  # , korean_tokenizer
-                                    for original_sent in row['article_original']]
-
-            summary_sents_list = []
-            if target_summary_sent is not None:
-                if target_summary_sent == 'ext':
-                    summary_sents = row['extractive_sents']
-                elif target_summary_sent == 'abs':
-                    summary_sents = korean_sent_spliter(row['abstractive'])   
-                summary_sents_list = [preprocessing(original_sent).split() # , korean_tokenizer
-                                        for original_sent in summary_sents]
-
-            json_list.append({'src': original_sents_list,
-                              'tgt': summary_sents_list
-            })
-        #     print(json_list)
-        #     break
-        # break
-        json_string = json.dumps(json_list, indent=4, ensure_ascii=False)
-        #print(json_string)
-        with open(file_name, 'w') as json_file:
-            json_file.write(json_string)
-
-
-def raw_to_df(from_dir, to_dir):
-    os.makedirs(to_dir, exist_ok=True)
-
-    # import data
-    with open(f'{from_dir}/train.jsonl', 'r') as json_file:
-        train_json_list = list(json_file)
-    with open(f'{from_dir}/extractive_test_v2.jsonl', 'r') as json_file:
-        test_json_list = list(json_file)
-
-    trains = []
-    for json_str in train_json_list:
-        line = json.loads(json_str)
-        trains.append(line)
-    tests = []
-    for json_str in test_json_list:
-        line = json.loads(json_str)
-        tests.append(line)
-
-    # Convert raw data to df
-    df = pd.DataFrame(trains)
-    df['extractive_sents'] = df.apply(lambda row: list(np.array(row['article_original'])[row['extractive']]) , axis=1)
-
-    # random split
-    train_df = df.sample(frac=0.95,random_state=42) #random state is a seed value
-    valid_df = df.drop(train_df.index)
-    train_df.reset_index(inplace=True, drop=True)
-    valid_df.reset_index(inplace=True, drop=True)
-
-    test_df = pd.DataFrame(tests)
-
-    # save df
-    train_df.to_pickle(f"{to_dir}/train_df.pickle")
-    valid_df.to_pickle(f"{to_dir}/valid_df.pickle")
-    test_df.to_pickle(f"{to_dir}/test_df.pickle")
-    print(f'train_df({len(train_df)}) is exported')
-    print(f'valid_df({len(valid_df)}) is exported')
-    print(f'test_df({len(test_df)}) is exported')
-
-
-def df_to_bert(from_dir, to_dir, temp_dir='/temp', log_file='/log.log', n_cpus=2, target_summary_sent=None):
-    os.makedirs(to_dir, exist_ok=True)
-    os.makedirs(temp_dir, exist_ok=True)
-    # os.makedirs(paths.LOG_DIR, exist_ok=True)
-
-    for data_type in ['train', 'valid', 'test']:
-        df = pd.read_pickle(f"{from_dir}/{data_type}_df.pickle")
-
-        ## make json file
-        # 동일한 파일명 존재하면 덮어쓰는게 아니라 ignore됨에 따라 폴더 내 삭제 후 만들어주기
-        json_data_dir = f"{temp_dir}/{data_type}" if target_summary_sent \
-                    else f"{temp_dir}/{data_type}_{target_summary_sent}"
-        make_or_initial_dir(json_data_dir)
-        create_json_files(df, data_type=data_type, target_summary_sent=target_summary_sent, path=json_data_dir)
-        
-        ## Convert json to bert.pt files
-        bert_data_dir = f"{to_dir}/{data_type}" if target_summary_sent \
-                    else f"{to_dir}/{data_type}_{target_summary_sent}"
-        make_or_initial_dir(bert_data_dir)
-        
-        os.system(f"python preprocess.py"
-            + f" -mode format_to_bert -dataset {data_type}"
-            + f" -raw_path {json_data_dir}"
-            + f" -save_path {bert_data_dir}"
-            + f" -log_file {log_file}"
-            + f" -lower -n_cpus {n_cpus}")
 
 @hydra.main(config_path="conf/data_prepro", config_name="config")
 def main(cfg: DictConfig) -> None:
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument("-mode", default=None, type=str, choices=['df', 'train_bert', 'test_bert'])
-    # parser.add_argument("-target_summary_sent", default='abs', type=str)
-    # parser.add_argument("-n_cpus", default='2', type=str)
-    # args = parser.parse_args()
-    
-    # os.makedirs(paths.DATA_DIR, exist_ok=True)
+    modes = ['jsonl_to_df', 'jsonl_to_bert', 'df_to_bert']
+    if cfg.mode not in modes:
+        logger.error(f'Incorrect mode. Please choose one of {modes}')
+        sys.exit("Stop")
 
-    print(OmegaConf.to_yaml(cfg))
-    PROJECT_DIR = hydra.utils.get_original_cwd()
-    RAW_DATA_DIR = os.path.join(PROJECT_DIR, 'datasets', 'raw')
-    os.makedirs(RAW_DATA_DIR, exist_ok=True)
+    # print(OmegaConf.to_yaml(cfg))
+    print(os.getcwd())
 
-    # python make_data.py -make df
     # Convert raw data to df
-    if cfg.mode in ['raw_to_df', 'raw_to_bert']: # and valid_df
-        raw_to_df(RAW_DATA_DIR, cfg.paths.df_dir)
-        
-    # python make_data.py -make bert -by abs
-    # Make bert input file for train and valid from df file
-    if cfg.mode in ['df_to_bert', 'raw_to_bert']:
-        df_to_bert(cfg.paths.df_dir, cfg.paths.bert_dir, temp_dir=cfg.paths.json_dir, 
-                    log_file=cfg.paths.log_file,
-                    n_cpus=cfg.n_cpus, target_summary_sent=cfg.target_summary_sent)
+    if cfg.mode in ['jsonl_to_df', 'jsonl_to_bert']:
+        jsonl_to_df(cfg)
 
-    # python make_data.py -mode test_bert
-    # Make bert input file for test from df file
+    # Make bert input file for train and valid from df file
+    if cfg.mode in ['df_to_bert', 'jsonl_to_bert']:
+        df_to_bert(cfg.dirs, 
+                    cfg.src_name, cfg.tgt_name, 
+                    log_file=cfg.dirs.log_file,
+                    n_cpus=cfg.n_cpus)
 
 
 if __name__ == "__main__":
+    # from_dir = "datasets/news_korean"
+    # to_dir = "datasets/news_korean/bert"
+    # src_name = "article_original"
+    # tgt_name = "abstractive"
+
+    # jsonl_to_df(from_dir, src_name, tgt_name, train_split_frac=0.95)
     main()

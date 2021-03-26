@@ -1,13 +1,18 @@
-paths:
-  df_dir: df
-  json_dir: json_data
-  bert_dir: bert_data
-  log_file: data_prepro.log
-
 mode: raw_to_bert  # 'df', 'train_bert', 'test_bert'
-target_summary_sent: abs
+datasets_main_dir: datasets
+dataset_name: sample
+src_name: text
+tgt_name: summary
+train_split_frac: 1
 n_cpus: 2
+
+dirs:
+  df: df
+  json: json
+  bert: bert
+  log_file: data_prepro.log
 
 hydra:
   run:
-    dir: datasets/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    dir: ./${datasets_main_dir}/${dataset_name}
+  output_subdir: null # ${now:%Y-%m-%d}/${now:%H-%M-%S}
