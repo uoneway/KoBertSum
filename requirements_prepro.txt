@@ -1,11 +1,9 @@
-#Cython
-kss
+kss==2.5.0
 bs4
 pandas
 
-# test
-# py-rouge
 nltk
 konlpy
 
+hydra-core==1.0.6
 varname
