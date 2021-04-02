@@ -1,0 +1,4 @@
+dataset_name: sample
+src_name: text
+tgt_name: summary
+train_split_frac: 1
