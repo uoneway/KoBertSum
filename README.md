@@ -2,27 +2,28 @@
 
 # KoBertSum
 
+## Update
+[21.04.03.]
+- 다양한 데이터를 받아들일 수 있도록 `Data Preparation` 방식을 전면 수정하였습니다.
+- hydra를 적용하여 많은 arguments들을 쉽게 관리 및 수정할 수 있도록 하였습니다.
+
+  
+추후 업데이트 계획은 다음과 같습니다.
+
+- [ ] `BertSumAbs` 및 `BertSumExtAbs` 요약모델 추가 지원
+- [ ] Pre-trained BERT로 [KoBERT ](https://github.com/SKTBrain/KoBERT)외 타 모델 지원(Huggingface transformers 라이브러리 지원 모델 위주)
+
 ## 모델 소개
 
 ### KoBertSum이란?
 
 KoBERTSUM은 ext 및 abs summarizatoin 분야에서 우수한 성능을 보여주고 있는 [BertSum모델](https://github.com/nlpyang/PreSumm)을 한국어 데이터에 적용할 수 있도록 수정한 한국어 요약 모델입니다.
 
-현재는
-
 - Pre-trained BERT로 [KoBERT](https://github.com/SKTBrain/KoBERT)를 이용합니다. 원활한 연결을 위해 [Transformers(](https://github.com/monologg/KoBERT-Transformers)[monologg](https://github.com/monologg/KoBERT-Transformers)[)](https://github.com/monologg/KoBERT-Transformers)를 통해 Huggingface transformers 라이브러리를 사용합니다.
 
-- 이용 Data로 한국어 문서 추출요약 AI 경진대회(~ 2020.12.09)에서 사용된 [Bflysoft-뉴스기사 데이터셋](https://dacon.io/competitions/official/235671/data/)에 맞춰져 있습니다.
+- 이용자가 원하는 데이터도 쉽게 입력 가능합니다.
 
 - `BertSumExt`모델만 지원합니다.
-
-  
-
-업데이트 계획은 다음과 같습니다.
-
-- [ ] 다양한 데이터를 받아들일 수 있도록 수정
-- [ ] `BertSumAbs` 및 `BertSumExtAbs` 요약모델 추가 지원
-- [ ] Pre-trained BERT로 [KoBERT ](https://github.com/SKTBrain/KoBERT)외 타 모델 지원(Huggingface transformers 라이브러리 지원 모델 위주)
 
 
 
@@ -42,28 +43,60 @@ BertSum은 BERT 위에 inter-sentence Transformer 2-layers 를 얹은 구조를 
 
   ![BERTSUM_structure](tutorials/images/BERTSUM_structure.PNG)
 
-## Install
-
-1. 필요 라이브러리 설치
-
-    ```
-    python main.py -task install
-    ```
 
 ## Usage
 
-1. 데이터 Preprocessing
+### Data Preparation
+ - `jsonl` 데이터 또는  `.pickle`로 저장한 dataframe 데이터를 바로 처리할 수 있습니다.
+ - 파일명에 `train`(필요시 `valid`도), `test` 텍스트가 포함되어 있는지에 따라 데이터 종류를 구분하고 그에 맞게 처리합니다. 따라서 파일명에 해당 키워드가 포함되도록 수정해주세요.
+ 당연히 `train`(필요시 `valid`도) 데이터는 summary를 포함하고 있어야 합니다.
+ - Data 및 폴더 구성은 `datasets/sample`을 참고하세요.
 
-   데이터를 `ext/data/raw` 에 넣어준 후 다음을 실행하여 BERT 입력을 위한 형태로 변환합니다.
-
-   - `n_cpus`: 연산에 이용할 CPU 수
-
+1. 필요 라이브러리 설치하기
     ```
-    python main.py -task make_data -n_cpus 2
+    pip install -r requirements_prepro.txt
     ```
+
+2. 데이터 추가하기
+   - `jsonl` 데이터일 경우, `datasets/DATASET_NAME` 폴더에 넣어줍니다.
+   - `.pickle`로 저장한 dataframe 데이터일 경우, `datasets/DATASET_NAME/df` 폴더에 넣어줍니다.
+  
+3. 데이터를 BertSum 모델에 입력 가능한 `.pt` 파일로 변환합니다.
+   - 공통사항
+     - `dataset_name`: 데이터셋 이름
+  (위 1번 단계에서 만들어준 폴더명 DATASET_NAME와 같아야 함)
+     - `src_name`: 데이터에서 본문에 해당하는 key값(jsonl) 또는 colname(df)
+     - `tgt_name`: 데이터에서 요약문에 해당하는 key값(jsonl) 또는 colname(df)
+     - `train_split_frac`(default=1.0): train 데이터를 train 및 valid 데이터로 분리하고 싶을 때 train 데이터 비율(1이면 분리하지 않음)
+     - `n_cpus`(default=2): 연산에 이용할 CPU 수
+     - 
+     변환 데이터는 `datasets/DATASET_NAME/bert`에 저장됩니다.
+
+   -  데이터셋이 `.jsonl`인 경우
+    ```
+    python data_prepro.py mode=jsonl_to_bert \
+      dataset_name=DATASET_NAME src_name=text tgt_name=summary train_split_frac=0.95 \
+      n_cpus=3
+    ```
+
+   - 데이터셋이 `.pickle`로 저장한 dataframe인 경우
+    ```
+    python data_prepro.py mode=df_to_bert \
+      dataset_name=DATASET_NAME src_name=text tgt_name=summary train_split_frac=0.95 \
+      n_cpus=3
+    ```
+
+  - 한국어 문서 추출요약 AI 경진대회에서 제공된 [Bflysoft-뉴스기사 데이터셋](https://dacon.io/competitions/official/235671/data/)을 사용할 경우
+     - 해당 `.jsonl`파일을 다운받아 `datasets/bflysoft_ko` 폴더에 넣어준 후
+     - `python data_prepro.py mode=jsonl_to_bert dataset=bflysoft_ko`를 실행해주면 간편하게 변환할 수 있습니다.
    
-   결과는 `ext/data/bert_data/train_abs` 및  `ext/data/bert_data/valid_abs` 에 저장됩니다.
-   
+  
+### Fine-tuning and Inference
+
+1. 필요 라이브러리 설치하기
+    ```
+    pip install -r requirements.txt
+    ```
 2. Fine-tuning
 
     KoBERT 모델을 기반으로 fine-tuning을 진행하고, 1,000 step마다  Fine-tuned model 파일(`.pt`)을 저장합니다. 
