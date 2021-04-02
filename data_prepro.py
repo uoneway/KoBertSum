@@ -5,7 +5,6 @@ import re
 from bs4 import BeautifulSoup
 import kss
 import json
-import numpy as np 
 import pandas as pd
 from tqdm import tqdm
 from omegaconf import DictConfig, OmegaConf
@@ -94,26 +93,27 @@ def preprocessing(text, tokenizer=None):
     return text
 
 def korean_sent_spliter(doc):
-    sents_splited = kss.split_sentences(doc)
-    if len(sents_splited) == 1:
-        # .이나 ?가 있는데도 kss가 분리하지 않은 문장들을 혹시나해서 살펴보니
-        # 대부분 쉼표나 가운데점 대신 .을 사용하거나 "" 사이 인용문구 안에 들어가있는 점들. -> 괜찮.
-        # aa = sents_splited[0].split('. ')
-        # if len(aa) > 1:
-        #     print(sents_splited)
-        return sents_splited
-    else:  # kss로 분리가 된 경우(3문장 이상일 때도 고려)
-        #print(sents_splited)
-        for i in range(len(sents_splited) - 1):
-            idx = 0
-            # 두 문장 사이에 .이나 ?가 없는 경우: 그냥 붙여주기
-            if sents_splited[idx][-1] not in ['.','?' ] and idx < len(sents_splited) - 1:
-                sents_splited[idx] = sents_splited[idx] + ' ' + sents_splited[idx + 1] if doc[len(sents_splited[0])] == ' ' \
-                                        else sents_splited[idx] + sents_splited[idx + 1] 
-                del sents_splited[idx + 1]
-                idx -= 1
-        #print(sents_splited)
-        return sents_splited
+    sents_splited = kss.split_sentences(doc, safe=True)
+    return sents_splited
+    # if len(sents_splited) == 1:
+    #     # .이나 ?가 있는데도 kss가 분리하지 않은 문장들을 혹시나해서 살펴보니
+    #     # 대부분 쉼표나 가운데점 대신 .을 사용하거나 "" 사이 인용문구 안에 들어가있는 점들. -> 괜찮.
+    #     # aa = sents_splited[0].split('. ')
+    #     # if len(aa) > 1:
+    #     #     print(sents_splited)
+    #     return sents_splited
+    # else:  # kss로 분리가 된 경우(3문장 이상일 때도 고려)
+    #     #print(sents_splited)
+    #     for i in range(len(sents_splited) - 1):
+    #         idx = 0
+    #         # 두 문장 사이에 .이나 ?가 없는 경우: 그냥 붙여주기
+    #         if sents_splited[idx][-1] not in ['.','?' ] and idx < len(sents_splited) - 1:
+    #             sents_splited[idx] = sents_splited[idx] + ' ' + sents_splited[idx + 1] if doc[len(sents_splited[0])] == ' ' \
+    #                                     else sents_splited[idx] + sents_splited[idx + 1] 
+    #             del sents_splited[idx + 1]
+    #             idx -= 1
+    #     #print(sents_splited)
+    #     return sents_splited
 
 
 def jsonl_to_df(cfg):
@@ -179,6 +179,94 @@ def _jsonl_to_df(jsonl_file_path, to_dir, src_name, tgt_name=None, train_split_f
         save_df(test_df, to_dir)        
 
 
+def df_to_bert(cfg):
+    from_dir, temp_dir, to_dir = cfg.dirs.df, cfg.dirs.json, cfg.dirs.bert
+    log_file = cfg.dirs.log_file
+    src_name, tgt_name, train_split_frac = cfg.src_name, cfg.tgt_name, cfg.train_split_frac
+    n_cpus = cfg.n_cpus
+
+    df_file_paths = _get_file_paths(from_dir, 'df.pickle')
+    if not df_file_paths:
+        logger.error(f"There is no 'df' files in {from_dir}")
+        sys.exit("Stop")
+    
+    # 동일한 파일명 존재하면 덮어쓰는게 아니라 ignore됨에 따라 폴더 내 삭제 후 만들어주기
+    _make_or_initial_dir(temp_dir)
+    _make_or_initial_dir(to_dir)
+    # os.makedirs(to_dir, exist_ok=True)
+    
+    def _df_to_bert(df):
+        # df to json file
+        _df_to_json(df, src_name, tgt_name, temp_dir, subdata_group=subdata_group)
+        
+        # json to bert.pt files
+        base_path = os.getcwd()
+        _make_or_initial_dir(os.path.join(base_path, to_dir, subdata_group))
+        os.system(f"python {os.path.join(hydra.utils.get_original_cwd(), 'src', 'preprocess.py')}"
+            + f" -mode format_to_bert -dataset {subdata_group}"
+            + f" -raw_path {os.path.join(base_path, temp_dir)}"
+            + f" -save_path {os.path.join(base_path, to_dir, subdata_group)}"
+            + f" -log_file {os.path.join(base_path, log_file)}"
+            + f" -lower -n_cpus {n_cpus}")
+
+    for df_file in df_file_paths:
+        logger.info(f"Start 'df_to_bert' processing for {df_file}")
+        df = pd.read_pickle(df_file)
+        # print(df)
+        subdata_group = _get_subdata_group(df_file)
+
+        if subdata_group == 'train' and int(train_split_frac) != 1:  # train -> train / dev
+            # random split
+            train_df = df.sample(frac=train_split_frac, random_state=42) #random state is a seed value
+            valid_df = df.drop(train_df.index)
+            train_df.reset_index(inplace=True, drop=True)
+            valid_df.reset_index(inplace=True, drop=True)
+
+            _df_to_bert(train_df)
+            _df_to_bert(valid_df)
+
+        else:
+            _df_to_bert(df)
+
+
+def _df_to_json(df, src_name, tgt_name, to_dir, subdata_group):
+    NUM_DOCS_IN_ONE_FILE = 1000
+    start_idx_list = list(range(0, len(df), NUM_DOCS_IN_ONE_FILE))
+
+    for start_idx in tqdm(start_idx_list):
+        end_idx = start_idx + NUM_DOCS_IN_ONE_FILE
+        if end_idx > len(df):
+            end_idx = len(df)  # -1로 하니 안됨...
+
+        #정렬을 위해 앞에 0 채워주기
+        length = len(str(len(df)))
+        start_idx_str = (length - len(str(start_idx)))*'0' + str(start_idx)
+        end_idx_str = (length - len(str(end_idx-1)))*'0' + str(end_idx-1)
+
+        file_name = f'{to_dir}/{subdata_group}.{start_idx_str}_{end_idx_str}.json'
+        
+        json_list = []
+        for _, row in df.iloc[start_idx:end_idx].iterrows(): 
+            src_sents = row[src_name] if isinstance(row[src_name], list) else \
+                        korean_sent_spliter(row[src_name])   
+            original_sents_list = [preprocessing(sent).split() for sent in src_sents]
+
+            summary_sents_list = []
+            if subdata_group in ['train', 'valid']:
+                tgt_sents = row[tgt_name] if isinstance(row[tgt_name], list) else \
+                        korean_sent_spliter(row[tgt_name])     
+                summary_sents_list = [preprocessing(sent).split() for sent in tgt_sents]
+
+            json_list.append({'src': original_sents_list,
+                              'tgt': summary_sents_list
+            })
+
+        json_string = json.dumps(json_list, indent=4, ensure_ascii=False)
+        #print(json_string)
+        with open(file_name, 'w') as json_file:
+            json_file.write(json_string)
+
+
 def _get_file_paths(dir='./', suffix: str=''):
     file_paths = []
     filename_pattern = f'*{suffix}' if suffix != '' \
@@ -223,10 +311,7 @@ def main(cfg: DictConfig) -> None:
 
     # Make bert input file for train and valid from df file
     if cfg.mode in ['df_to_bert', 'jsonl_to_bert']:
-        df_to_bert(cfg.dirs, 
-                    cfg.src_name, cfg.tgt_name, 
-                    log_file=cfg.dirs.log_file,
-                    n_cpus=cfg.n_cpus)
+        df_to_bert(cfg)
 
 
 if __name__ == "__main__":
@@ -236,4 +321,5 @@ if __name__ == "__main__":
     # tgt_name = "abstractive"
 
     # jsonl_to_df(from_dir, src_name, tgt_name, train_split_frac=0.95)
+    
     main()
