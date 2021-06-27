@@ -55,34 +55,36 @@ BertSum은 BERT 위에 inter-sentence Transformer 2-layers 를 얹은 구조를 
 1. 필요 라이브러리 설치하기
     ```
     pip install -r requirements_prepro.txt
+    pip install -r requirements.txt
     ```
 
 2. 데이터 추가하기
    - `jsonl` 데이터일 경우, `datasets/DATASET_NAME` 폴더에 넣어줍니다.
    - `.pickle`로 저장한 dataframe 데이터일 경우, `datasets/DATASET_NAME/df` 폴더에 넣어줍니다.
   
-3. 데이터를 BertSum 모델에 입력 가능한 `.pt` 파일로 변환합니다.
+3. 다음 명령어를 실행하여 데이터를 BertSum 모델에 입력 가능한 `.pt` 파일로 변환합니다.   
+변환 데이터는 `datasets/DATASET_NAME/bert`에 저장됩니다.
    - 공통사항
-     - `dataset_name`: 데이터셋 이름
-  (위 1번 단계에서 만들어준 폴더명 DATASET_NAME와 같아야 함)
+     - `dataset_name`: 데이터셋 이름 (위 2번 단계에서 만들어준 DATASET_NAME과 동일해야 함)
      - `src_name`: 데이터에서 본문에 해당하는 key값(jsonl) 또는 colname(df)
      - `tgt_name`: 데이터에서 요약문에 해당하는 key값(jsonl) 또는 colname(df)
+     - `tgt_type`: 데이터 내 요약문이 index list형태로 되어있는지(`idx_list`), string list로 되어 있는지(`str_list`)
      - `train_split_frac`(default=1.0): train 데이터를 train 및 valid 데이터로 분리하고 싶을 때 train 데이터 비율(1이면 분리하지 않음)
      - `n_cpus`(default=2): 연산에 이용할 CPU 수
-     - 
-     변환 데이터는 `datasets/DATASET_NAME/bert`에 저장됩니다.
 
    -  데이터셋이 `.jsonl`인 경우
     ```
     python data_prepro.py mode=jsonl_to_bert \
-      dataset_name=DATASET_NAME src_name=text tgt_name=summary train_split_frac=0.95 \
+      dataset_name=DATASET_NAME src_name=SRC_NAME tgt_name=SUMMARY_NAME tgt_type=idx_list  \
+      train_split_frac=0.95 \
       n_cpus=3
     ```
 
    - 데이터셋이 `.pickle`로 저장한 dataframe인 경우
     ```
     python data_prepro.py mode=df_to_bert \
-      dataset_name=DATASET_NAME src_name=text tgt_name=summary train_split_frac=0.95 \
+      dataset_name=DATASET_NAME src_name=SRC_NAME tgt_name=SUMMARY_NAME tgt_type=idx_list \
+      train_split_frac=0.95 \
       n_cpus=3
     ```
 

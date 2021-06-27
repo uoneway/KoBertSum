@@ -315,6 +315,9 @@ class BertData():
         self.pad_vid = self.tokenizer.token2idx[self.pad_token]
 
     def preprocess(self, src, tgt, sent_labels, use_bert_basic_tokenizer=False, is_test=False):
+        '''
+        ext에서는 sent_labels만 사용되고, tgt_subtoken_idxs는 만들어지긴 하는데 결국 사용되지는 않음.  
+        '''
 
         if ((not is_test) and len(src) == 0):
             return None
@@ -414,9 +417,16 @@ def _format_to_bert(params):
     for d in jobs:
         source, tgt = d['src'], d['tgt']
         #print(source)
-        sent_labels = full_selection(source[:args.max_src_nsents], tgt, 3)
-        # sent_labels = greedy_selection(source[:args.max_src_nsents], tgt, 3)
+        
+        if args.tgt_type == 'idx_list':
+            sent_labels = tgt  # index
+            tgt = []  # list로 아래서 가정해야 하기에..
+            # print("ddd", sent_labels)
+        else:
+            sent_labels = full_selection(source[:args.max_src_nsents], tgt, 3)
+            # sent_labels = greedy_selection(source[:args.max_src_nsents], tgt, 3)
         # print(sent_labels)
+        
         if (args.lower):
             source = [' '.join(s).lower().split() for s in source]
             tgt = [' '.join(s).lower().split() for s in tgt]

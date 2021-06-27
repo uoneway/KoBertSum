@@ -1,0 +1,5 @@
+dataset_name: ai_online
+src_name: article_original
+tgt_name: extractive
+tgt_type: idx_list
+train_split_frac: 0.9

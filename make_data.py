@@ -1,119 +1,15 @@
 import os
 import sys
-import re
-#import MeCab
-from bs4 import BeautifulSoup
-import kss
 import json
 import pandas as pd
 from tqdm import tqdm
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 import hydra
 import glob
 from src.others.logging import logger
 
+from src.prepro.preprocessor_kr import korean_sent_spliter, preprocess_kr
 
-# special_symbols_in_dict = ['!', '"', '#', '$', '%', '&', "'", '(', ')', '*', '+', ',', '-']
-# unused_tags = ['SF', 'SE', 'SSO', 'SSC', 'SC', 'SY']
-# def korean_tokenizer(text, unused_tags=None, print_tag=False): 
-#     # assert if use_tags is None or unuse_tags is None
-    
-#     tokenizer = MeCab.Tagger("-d /usr/local/lib/mecab/dic/mecab-ko-dic")
-#     parsed = tokenizer.parse(text)
-#     word_tag = [w for w in parsed.split("\n")]
-#     result = []
-    
-#     if unused_tags:
-#         for word_ in word_tag[:-2]:
-#             word = word_.split("\t")
-#             tag = word[1].split(",")[0]
-#             if tag not in unused_tags:
-#                 if print_tag:
-#                     result.append((word[0], tag))
-#                 else:
-#                     result.append(word[0]) 
-#     else:
-#         for word_ in word_tag[:-2]:
-#             word = word_.split("\t")
-#             result.append(word[0]) 
-
-#     return result
-
-def number_split(sentence):
-    # 1. 공백 이후 숫자로 시작하는 경우만(문자+숫자+문자, 문자+숫자 케이스는 제외), 해당 숫자와 그 뒤 문자를 분리
-    num_str_pattern = re.compile(r'(\s\d+)([^\d\s])')
-    sentence = re.sub(num_str_pattern, r'\1 \2', sentence)
-
-    # 2. 공백으로 sentence를 분리 후 숫자인경우만 공백 넣어주기
-    #numbers_reg = re.compile("\s\d{2,}\s")
-    sentence_fixed = ''
-    for token in sentence.split():
-        if token.isnumeric():
-            token = ' '.join(token)
-        sentence_fixed+=' '+token
-    return sentence_fixed
-
-def noise_remove(text):
-    text = text.lower()
-    
-    # url 대체
-    # url_pattern = re.compile(r'https?://\S*|www\.\S*')
-    # text = url_pattern.sub(r'URL', text)
-
-    # html 삭제
-    soup = BeautifulSoup(text, "html.parser")
-    text = soup.get_text(separator=" ")
-
-    # 숫자 중간에 공백 삽입하기
-    # text = number_split(text)
-    #number_pattern = re.compile('\w*\d\w*') 
-#     number_pattern = re.compile('\d+') 
-#     text = number_pattern.sub(r'[[NUMBER]]', text)
-    
-
-    # PUCTUACTION_TO_REMOVED = string.punctuation.translate(str.maketrans('', '', '\"\'#$%&\\@'))  # !"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ 중 적은것을 제외한 나머지를 삭제
-    # text = text.translate(str.maketrans(PUCTUACTION_TO_REMOVED, ' '*len(PUCTUACTION_TO_REMOVED))) 
-
-    # remove_redundant_white_spaces
-    text = re.sub(' +', ' ', text)
-
-    # tgt special token 으로 활용할 204; 314[ 315] 대체/삭제해줘서 없애주기
-    text = re.sub('¶', ' ', text)
-    text = re.sub('----------------', ' ', text)
-    text = re.sub(';', '.', text)
-
-    return text
-
-def preprocessing(text, tokenizer=None):
-    text = noise_remove(text)
-    if tokenizer is not None:
-        text = tokenizer(text)
-        text = ' '.join(text)
-
-    return text
-
-def korean_sent_spliter(doc):
-    sents_splited = kss.split_sentences(doc, safe=True)
-    return sents_splited
-    # if len(sents_splited) == 1:
-    #     # .이나 ?가 있는데도 kss가 분리하지 않은 문장들을 혹시나해서 살펴보니
-    #     # 대부분 쉼표나 가운데점 대신 .을 사용하거나 "" 사이 인용문구 안에 들어가있는 점들. -> 괜찮.
-    #     # aa = sents_splited[0].split('. ')
-    #     # if len(aa) > 1:
-    #     #     print(sents_splited)
-    #     return sents_splited
-    # else:  # kss로 분리가 된 경우(3문장 이상일 때도 고려)
-    #     #print(sents_splited)
-    #     for i in range(len(sents_splited) - 1):
-    #         idx = 0
-    #         # 두 문장 사이에 .이나 ?가 없는 경우: 그냥 붙여주기
-    #         if sents_splited[idx][-1] not in ['.','?' ] and idx < len(sents_splited) - 1:
-    #             sents_splited[idx] = sents_splited[idx] + ' ' + sents_splited[idx + 1] if doc[len(sents_splited[0])] == ' ' \
-    #                                     else sents_splited[idx] + sents_splited[idx + 1] 
-    #             del sents_splited[idx + 1]
-    #             idx -= 1
-    #     #print(sents_splited)
-    #     return sents_splited
 
 
 def jsonl_to_df(cfg):
@@ -182,10 +78,10 @@ def _jsonl_to_df(jsonl_file_path, to_dir, src_name, tgt_name=None, train_split_f
 def df_to_bert(cfg):
     from_dir, temp_dir, to_dir = cfg.dirs.df, cfg.dirs.json, cfg.dirs.bert
     log_file = cfg.dirs.log_file
-    src_name, tgt_name, train_split_frac = cfg.src_name, cfg.tgt_name, cfg.train_split_frac
+    src_name, tgt_name, tgt_type, train_split_frac = cfg.src_name, cfg.tgt_name, cfg.tgt_type, cfg.train_split_frac
     n_cpus = cfg.n_cpus
 
-    df_file_paths = _get_file_paths(from_dir, 'df.pickle')
+    df_file_paths = _get_file_paths(from_dir, 'pickle')
     if not df_file_paths:
         logger.error(f"There is no 'df' files in {from_dir}")
         sys.exit("Stop")
@@ -195,15 +91,16 @@ def df_to_bert(cfg):
     _make_or_initial_dir(to_dir)
     # os.makedirs(to_dir, exist_ok=True)
     
-    def _df_to_bert(df):
+    def _df_to_bert(df, subdata_group):
         # df to json file
-        _df_to_json(df, src_name, tgt_name, temp_dir, subdata_group=subdata_group)
+        _df_to_json(df, src_name, tgt_name, tgt_type, temp_dir, subdata_group=subdata_group)
         
         # json to bert.pt files
         base_path = os.getcwd()
         _make_or_initial_dir(os.path.join(base_path, to_dir, subdata_group))
         os.system(f"python {os.path.join(hydra.utils.get_original_cwd(), 'src', 'preprocess.py')}"
             + f" -mode format_to_bert -dataset {subdata_group}"
+            + f" -tgt_type {tgt_type}"
             + f" -raw_path {os.path.join(base_path, temp_dir)}"
             + f" -save_path {os.path.join(base_path, to_dir, subdata_group)}"
             + f" -log_file {os.path.join(base_path, log_file)}"
@@ -222,14 +119,14 @@ def df_to_bert(cfg):
             train_df.reset_index(inplace=True, drop=True)
             valid_df.reset_index(inplace=True, drop=True)
 
-            _df_to_bert(train_df)
-            _df_to_bert(valid_df)
+            _df_to_bert(train_df, subdata_group='train')
+            _df_to_bert(valid_df, subdata_group='valid')
 
         else:
-            _df_to_bert(df)
+            _df_to_bert(df, subdata_group)
 
 
-def _df_to_json(df, src_name, tgt_name, to_dir, subdata_group):
+def _df_to_json(df, src_name, tgt_name, tgt_type, to_dir, subdata_group):
     NUM_DOCS_IN_ONE_FILE = 1000
     start_idx_list = list(range(0, len(df), NUM_DOCS_IN_ONE_FILE))
 
@@ -249,14 +146,18 @@ def _df_to_json(df, src_name, tgt_name, to_dir, subdata_group):
         for _, row in df.iloc[start_idx:end_idx].iterrows(): 
             src_sents = row[src_name] if isinstance(row[src_name], list) else \
                         korean_sent_spliter(row[src_name])   
-            original_sents_list = [preprocessing(sent).split() for sent in src_sents]
+            original_sents_list = [preprocess_kr(sent).split() for sent in src_sents]
 
             summary_sents_list = []
             if subdata_group in ['train', 'valid']:
-                tgt_sents = row[tgt_name] if isinstance(row[tgt_name], list) else \
-                        korean_sent_spliter(row[tgt_name])     
-                summary_sents_list = [preprocessing(sent).split() for sent in tgt_sents]
-
+                if tgt_type == 'idx_list':
+                    summary_sents_list = row[tgt_name]
+                else:
+                    tgt_sents = row[tgt_name] if isinstance(row[tgt_name], list) else \
+                            korean_sent_spliter(row[tgt_name])
+                    
+                    summary_sents_list = [preprocess_kr(sent).split() for sent in tgt_sents]
+                # print("aaa", tgt_name, summary_sents_list)
             json_list.append({'src': original_sents_list,
                               'tgt': summary_sents_list
             })
@@ -295,7 +196,7 @@ def _get_subdata_group(path):
             return type
 
 
-@hydra.main(config_path="conf/data_prepro", config_name="config")
+@hydra.main(config_path="conf/make_data", config_name="config")
 def main(cfg: DictConfig) -> None:
     modes = ['jsonl_to_df', 'jsonl_to_bert', 'df_to_bert']
     if cfg.mode not in modes:
@@ -314,12 +215,5 @@ def main(cfg: DictConfig) -> None:
         df_to_bert(cfg)
 
 
-if __name__ == "__main__":
-    # from_dir = "datasets/news_korean"
-    # to_dir = "datasets/news_korean/bert"
-    # src_name = "article_original"
-    # tgt_name = "abstractive"
-
-    # jsonl_to_df(from_dir, src_name, tgt_name, train_split_frac=0.95)
-    
+if __name__ == "__main__":    
     main()

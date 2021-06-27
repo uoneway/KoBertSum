@@ -48,10 +48,7 @@ if __name__ == '__main__':
 
     # python main.py -mode make_data -n_cpus 2
     elif args.mode == 'make_data':
-        os.chdir(PROJECT_DIR + '/src')
-        os.system("python make_data.py -mode df")
-        os.system(f"python make_data.py -mode train_bert -target_summary_sent abs -n_cpus {args.n_cpus}")
-        os.system(f"python make_data.py -mode test_bert -n_cpus {args.n_cpus}")
+        pass
 
     # python main.py -mode train -target_summary_sent abs -visible_gpus 0
     # python main.py -mode train -target_summary_sent abs -visible_gpus 0 -train_from 1209_1236/model_step_7000.pt 
