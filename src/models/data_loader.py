@@ -2,6 +2,7 @@ import bisect
 import gc
 import glob
 import random
+import os
 
 import torch
 
@@ -30,7 +31,7 @@ class Batch(object):
             tgt = torch.tensor(self._pad(pre_tgt, 0))
 
             segs = torch.tensor(self._pad(pre_segs, 0))
-            #Upgrade pytorch version to 1.4
+            #Upgrade to new masking system, SG edit 9-30-19
             # mask_src = 1 - (src == 0)
             # mask_tgt = 1 - (tgt == 0)
             mask_src = ~(src == 0)
@@ -39,7 +40,6 @@ class Batch(object):
 
             clss = torch.tensor(self._pad(pre_clss, -1))
             src_sent_labels = torch.tensor(self._pad(pre_src_sent_labels, 0))
-            #Upgrade pytorch version to 1.4
             # mask_cls = 1 - (clss == -1)
             mask_cls = ~(clss == -1)
             clss[clss == -1] = 0
@@ -86,7 +86,8 @@ def load_dataset(args, corpus_type, shuffle):
         return dataset
 
     # Sort the glob output by file name (by increasing indexes).
-    pts = sorted(glob.glob(args.bert_data_path + '/' + corpus_type + '.[0-9]*.pt'))
+    print(os.path.join(args.bert_data_path, corpus_type, f'{corpus_type}.[0-9_]*.pt'))
+    pts = sorted(glob.glob(os.path.join(args.bert_data_path, corpus_type, f'{corpus_type}.[0-9_]*.pt')))
     print(pts)
     if pts:
         if (shuffle):

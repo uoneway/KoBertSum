@@ -11,10 +11,13 @@ PROBLEM = 'ext'
 PROJECT_DIR = os.getcwd()
 print(PROJECT_DIR)
 
-DATA_DIR = f'{PROJECT_DIR}/{PROBLEM}/data'
+# DATA_DIR = f'{PROJECT_DIR}/{PROBLEM}/data'
+DATA_DIR = f'{PROJECT_DIR}/datasets/ai_online'
 RAW_DATA_DIR = DATA_DIR + '/raw'
-JSON_DATA_DIR = DATA_DIR + '/json_data'
-BERT_DATA_DIR = DATA_DIR + '/bert_data' 
+# JSON_DATA_DIR = DATA_DIR + '/json_data'
+JSON_DATA_DIR = DATA_DIR + '/json'
+# BERT_DATA_DIR = DATA_DIR + '/bert_data' 
+BERT_DATA_DIR = DATA_DIR + '/bert' 
 LOG_DIR = f'{PROJECT_DIR}/{PROBLEM}/logs'
 LOG_PREPO_FILE = LOG_DIR + '/preprocessing.log' 
 
@@ -25,7 +28,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-task", default='ext', type=str, choices=['ext', 'abs'])
     parser.add_argument("-mode", default='test', type=str, choices=['install', 'make_data', 'train', 'valid', 'test'])
-    parser.add_argument("-target_summary_sent", default='abs', type=str)
 
     parser.add_argument("-n_cpus", default='2', type=str)
     parser.add_argument("-visible_gpus", default='0', type=str)
@@ -36,14 +38,14 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # now = time.strftime('%m%d_%H%M')
-    now = "1209_1236"
+    now = "0627_1700"
 
     # python main.py -mode install
     if args.mode == 'install':
         os.chdir(PROJECT_DIR)
         os.system("pip install -r requirements.txt")
         #os.system("pip install Cython")
-        os.system("python src/others/install_mecab.py")
+        # os.system("python src/others/install_mecab.py")
         os.system("pip install -r requirements_prepro.txt")
 
     # python main.py -mode make_data -n_cpus 2
@@ -60,8 +62,12 @@ if __name__ == '__main__':
 
         # python train.py -mode ext -mode train -bert_data_path BERT_DATA_PATH -ext_dropout 0.1 -model_path MODEL_PATH -lr 2e-3 -visible_gpus 0,1,2 -report_every 50 -save_checkpoint_steps 1000 -batch_size 3000 -train_steps 50000 -accum_count 2 -log_file ../logs/ext_bert_cnndm -use_interval true -warmup_steps 10000 -max_pos 512
         # python train.py  -mode abs -mode train -train_from /kaggle/input/absbert-weights/model_step_149000.pt -bert_data_path /kaggle/working/bert_data/news  -dec_dropout 0.2  -model_path /kaggle/working/bertsumextabs -sep_optim true -lr_bert 0.002 -lr_dec 0.02 -save_checkpoint_steps 1000 -batch_size 140 -train_steps 150000 -report_every 100 -accum_count 5 -use_bert_emb true -use_interval true -warmup_steps_bert 1000 -warmup_steps_dec 500 -max_pos 512 -visible_gpus 0  -temp_dir /kaggle/working/temp -log_file /kaggle/working/logs/abs_bert_cnndm
+        # do_str = f"python train.py -task ext -mode train"  \
+        #     + f" -bert_data_path {BERT_DATA_DIR}/train_{args.target_summary_sent}"  \
+        #     + f" -save_checkpoint_steps 1000 -visible_gpus {args.visible_gpus} -report_every 50"
+            
         do_str = f"python train.py -task ext -mode train"  \
-            + f" -bert_data_path {BERT_DATA_DIR}/train_{args.target_summary_sent}"  \
+            + f" -bert_data_path {BERT_DATA_DIR}"  \
             + f" -save_checkpoint_steps 1000 -visible_gpus {args.visible_gpus} -report_every 50"
 
         param1 = " -ext_dropout 0.1 -lr 2e-3 -batch_size 500 -train_steps 5000 -accum_count 2 -use_interval true -warmup_steps 3000 -max_pos 512"
@@ -94,7 +100,7 @@ if __name__ == '__main__':
         """
         os.system(f"python train.py -task ext -mode validate -test_all True"
             + f" -model_path {MODEL_DIR}/{args.model_path}"
-            + f" -bert_data_path {BERT_DATA_DIR}/valid_abs"
+            + f" -bert_data_path {BERT_DATA_DIR}"
             + f" -result_path {RESULT_DIR}/result_{args.model_path}"
             + f" -log_file {LOG_DIR}/valid_{args.model_path}.log"
             + f" -test_batch_size 500  -batch_size 3000"
@@ -113,7 +119,7 @@ if __name__ == '__main__':
         os.system(f"""\
             python train.py -task ext -mode test \
             -test_from {MODEL_DIR}/{args.test_from} \
-            -bert_data_path {BERT_DATA_DIR}/test \
+            -bert_data_path {BERT_DATA_DIR} \
             -result_path {RESULT_DIR}/result_{model_folder} \
             -log_file {LOG_DIR}/test_{model_folder}.log \
             -test_batch_size 1  -batch_size 3000 \
