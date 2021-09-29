@@ -108,7 +108,7 @@ BertSum은 BERT 위에 inter-sentence Transformer 2-layers 를 얹은 구조를 
       예) (GPU 3개를 이용할 경우): `0,1,2`
 
     ```
-    python main.py -task train -target_summary_sent abs -visible_gpus 0
+    python main.py -mode train -target_summary_sent abs -visible_gpus 0
     ```
 
     결과는  `models` 폴더 내 finetuning이 실행된 시간을 폴더명으로 가진 폴더에 저장됩니다. 
@@ -120,7 +120,7 @@ BertSum은 BERT 위에 inter-sentence Transformer 2-layers 를 얹은 구조를 
    - `model_path`:  model 파일(`.pt`)이 저장된 폴더 경로
 
    ```
-   python main.py -task valid -model_path 1209_1236
+   python main.py -mode valid -model_path 1209_1236
    ```
 
    결과는 `ext/logs` 폴더 내 `valid_1209_1236.log` 형태로 저장됩니다.
@@ -134,7 +134,7 @@ BertSum은 BERT 위에 inter-sentence Transformer 2-layers 를 얹은 구조를 
       예) (GPU 3개를 이용할 경우): `0,1,2`
 
     ```
-    python main.py -task test -test_from 1209_1236/model_step_7000.pt -visible_gpus 0
+    python main.py -mode test -test_from 1209_1236/model_step_7000.pt -visible_gpus 0
     ```
 
     결과는 `ext/data/results/` 폴더에 `result_1209_1236_step_7000.candidate`  및 `submission_날짜_시간.csv` 형태로 저장됩니다.

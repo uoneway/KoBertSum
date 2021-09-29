@@ -3,5 +3,5 @@ __pycache__
 tutorials/.ipynb_checkpoints/
 data/
 ext/
-# temp/
-# tutorials/
+temp/
+tutorials/

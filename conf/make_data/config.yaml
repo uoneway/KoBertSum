@@ -2,6 +2,8 @@ mode: raw_to_bert  # 'df', 'train_bert', 'test_bert'
 datasets_main_dir: datasets
 train_split_frac: 1.0
 n_cpus: 2
+model_name: monologg/kobert
+tgt_type: str_list
 
 defaults:
   - dataset: sample
