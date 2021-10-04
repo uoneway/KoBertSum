@@ -1,0 +1,3 @@
+dataset_name: hunmin_ko
+src_name: text
+tgt_name: summary

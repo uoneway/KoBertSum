@@ -1,7 +1,8 @@
 .vscode/
 __pycache__
-tutorials/.ipynb_checkpoints/
-data/
-ext/
-# temp/
 # tutorials/
+datasets/*
+ext/
+abs/
+temp/
+# src_tmp/

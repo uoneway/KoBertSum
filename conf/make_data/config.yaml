@@ -1,18 +1,17 @@
-mode: raw_to_bert  # 'df', 'train_bert', 'test_bert'
-datasets_main_dir: datasets
-train_split_frac: 1.0
-n_cpus: 2
-
-defaults:
-  - dataset: sample
+mode: df_to_bert
+model_name: kykim/bert-kor-base
+n_cpus: 16
 
 dirs:
   df: df
   json: json
   bert: bert
-  log_file: data_prepro.log
+  log_file: make_data.log
+
+defaults:
+  - dataset: sample
 
 hydra:
   run:
-    dir: ./${datasets_main_dir}/${dataset_name}
+    dir: ../datasets/${dataset.name}
   output_subdir: null # ${now:%Y-%m-%d}/${now:%H-%M-%S}

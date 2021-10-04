@@ -1,4 +1,9 @@
-dataset_name: sample
-src_name: text
-tgt_name: summary
-train_split_frac: 1
+name: sample
+text:
+  name: text
+  type: str_list
+  do_cleaning: True
+summary:
+  name: summary
+  type: str
+is_informal: False
