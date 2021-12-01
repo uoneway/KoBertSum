@@ -47,8 +47,8 @@ if __name__ == '__main__':
     # python main.py -task make_data -n_cpus 2
     elif args.task == 'make_data':
         os.chdir(PROJECT_DIR + '/src')
-        os.system("python make_data.py -task df")
-        os.system(f"python make_data.py -task train_bert -target_summary_sent abs -n_cpus {args.n_cpus}")
+        os.system("python make_data.py -task df") # done
+        os.system(f"python make_data.py -task train_bert -target_summary_sent {args.target_summary_sent} -n_cpus {args.n_cpus}")
         os.system(f"python make_data.py -task test_bert -n_cpus {args.n_cpus}")
 
     # python main.py -task train -target_summary_sent abs -visible_gpus 0
@@ -68,7 +68,7 @@ if __name__ == '__main__':
         param1 = " -ext_dropout 0.1 -lr 2e-3 -batch_size 500 -train_steps 5000 -accum_count 2 -use_interval true -warmup_steps 3000 -max_pos 512"
         param2 = " -ext_dropout 0.1 -lr 2e-3 -batch_size 1000 -train_steps 5000 -accum_count 2 -use_interval true -warmup_steps 3000 -max_pos 512"
         param3 = " -ext_dropout 0.1 -max_pos 512 -lr 2e-3 -warmup_steps 10000 -batch_size 3000 -accum_count 2 -train_steps 50000  -use_interval true"  
-        do_str += param3
+        do_str += param1
   
         if args.train_from is None:
             os.system(f'mkdir {MODEL_DIR}/{now}')
@@ -95,7 +95,7 @@ if __name__ == '__main__':
         """
         os.system(f"python train.py -task ext -mode validate -test_all True"
             + f" -model_path {MODEL_DIR}/{args.model_path}"
-            + f" -bert_data_path {BERT_DATA_DIR}/valid_abs"
+            + f" -bert_data_path {BERT_DATA_DIR}/valid_ext"
             + f" -result_path {RESULT_DIR}/result_{args.model_path}"
             + f" -log_file {LOG_DIR}/valid_{args.model_path}.log"
             + f" -test_batch_size 500  -batch_size 3000"

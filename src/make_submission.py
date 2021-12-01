@@ -26,7 +26,7 @@ RESULT_DIR = f'{PROJECT_DIR}/{PROBLEM}/results'
 # python make_submission.py result_1209_1236_step_7000.candidate
 if __name__ == '__main__':
     # test set
-    with open(RAW_DATA_DIR + '/extractive_test_v2.jsonl', 'r') as json_file:
+    with open(RAW_DATA_DIR + '/test.jsonl', 'r') as json_file:
         json_list = list(json_file)
 
     tests = []

@@ -8,6 +8,8 @@ import json
 import numpy as np 
 import pandas as pd
 from tqdm import tqdm
+from tqdm import trange
+import ast
 import argparse
 import pickle
 
@@ -148,18 +150,14 @@ def create_json_files(df, data_type='train', target_summary_sent=None, path=''):
         
         json_list = []
         for i, row in df.iloc[start_idx:end_idx].iterrows():
-            original_sents_list = [preprocessing(original_sent).split()  # , korean_tokenizer
-                                    for original_sent in row['article_original']]
-
+            original_sents_list = [preprocessing(original_sent).split() for original_sent in row['article_original']]
             summary_sents_list = []
             if target_summary_sent is not None:
                 if target_summary_sent == 'ext':
-                    summary_sents = row['extractive_sents']
+                    summary_sents = ast.literal_eval(row['extractive_sents'])
                 elif target_summary_sent == 'abs':
-                    summary_sents = korean_sent_spliter(row['abstractive'])   
-                summary_sents_list = [preprocessing(original_sent).split() # , korean_tokenizer
-                                        for original_sent in summary_sents]
-
+                    summary_sents = korean_sent_spliter(row['abstractive'])
+                summary_sents_list = [preprocessing(original_sent).split() for original_sent in summary_sents]
             json_list.append({'src': original_sents_list,
                               'tgt': summary_sents_list
             })
@@ -176,7 +174,7 @@ def create_json_files(df, data_type='train', target_summary_sent=None, path=''):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-task", default=None, type=str, choices=['df', 'train_bert', 'test_bert'])
-    parser.add_argument("-target_summary_sent", default='abs', type=str)
+    parser.add_argument("-target_summary_sent", default='ext', type=str)
     parser.add_argument("-n_cpus", default='2', type=str)
 
     args = parser.parse_args()
@@ -190,7 +188,7 @@ if __name__ == '__main__':
         # import data
         with open(f'{RAW_DATA_DIR}/train.jsonl', 'r') as json_file:
             train_json_list = list(json_file)
-        with open(f'{RAW_DATA_DIR}/extractive_test_v2.jsonl', 'r') as json_file:
+        with open(f'{RAW_DATA_DIR}/test.jsonl', 'r') as json_file:
             test_json_list = list(json_file)
 
         trains = []
@@ -204,7 +202,23 @@ if __name__ == '__main__':
 
         # Convert raw data to df
         df = pd.DataFrame(trains)
-        df['extractive_sents'] = df.apply(lambda row: list(np.array(row['article_original'])[row['extractive']]) , axis=1)
+        import ast
+        #df['extractive'] = df['extractive'].apply(lambda x: json.loads(x))
+        #df['article_original'] = df['article_original'].apply(lambda x: ast.literal_eval(x))
+
+        new_df = []
+        for i in trange(len(df)):
+            df_len = len(df.iloc[i]['extractive'])
+            df_text = []
+            for j in range(df_len):
+                idx = df.iloc[i]['extractive'][j]
+                if idx is None:
+                    pass
+                else:
+                    df_text.append(df.iloc[i]['article_original'][idx])
+            new_df.append(str(df_text))
+        df = pd.concat([df, pd.DataFrame(new_df, columns=['extractive_sents'])], axis=1)
+        #df['extractive_sents'] = df.apply(lambda row: list(np.array(row['article_original'])[row['extractive']]) , axis=1)
 
         # random split
         train_df = df.sample(frac=0.95,random_state=42) #random state is a seed value
@@ -231,7 +245,6 @@ if __name__ == '__main__':
 
         for data_type in ['train', 'valid']:
             df = pd.read_pickle(f"{RAW_DATA_DIR}/{data_type}_df.pickle")
-
             ## make json file
             # 동일한 파일명 존재하면 덮어쓰는게 아니라 ignore됨에 따라 폴더 내 삭제 후 만들어주기
             json_data_dir = f"{JSON_DATA_DIR}/{data_type}_{args.target_summary_sent}"
@@ -241,7 +254,7 @@ if __name__ == '__main__':
                 os.mkdir(json_data_dir)
 
             create_json_files(df, data_type=data_type, target_summary_sent=args.target_summary_sent, path=JSON_DATA_DIR)
-           
+
             ## Convert json to bert.pt files
             bert_data_dir = f"{BERT_DATA_DIR}/{data_type}_{args.target_summary_sent}"
             if os.path.exists(bert_data_dir):
