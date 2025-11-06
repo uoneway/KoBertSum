@@ -61,12 +61,102 @@ def get_subdata_group(path):
             return type
 
 
+# def load_obj(path: str, file_type: str = None):
+#     """[summary]
+#     추가 개발할 것
+#     - 로드된 obj에 종류를 알고, 여러개일 떄 하나로 합쳐서 반환하기
+#     - 멀티프로세싱 적용
+#     """
+#     if os.path.isdir(path):
+#         file_paths = glob.glob(path)
+
+#         if not file_paths:
+#             raise FileNotFoundError
+
+#         if not file_type:
+#             # Check whether the files has same file_type
+#             file_extension_set = set()
+#             for file_path in file_paths:
+#                 _, file_extension = os.path.splitext(os.path.basename(file_path))
+#                 file_extension_set.add(file_extension)
+#             assert len(file_extension_set) == 1
+
+#             file_type = file_extension_set.pop()
+
+#         obj_list = []
+#         for file_path in file_paths:
+#             obj_list.append(_load_obj(file_path, file_type))
+
+#         print(f"Loaded {len(file_paths)} {file_type} files from {path}")
+#         return obj_list
+
+#     elif os.path.isfile(path):
+#         _, file_extension = os.path.splitext(os.path.basename(path))
+#         obj = _load_obj(path, file_extension)
+#         print(f"Loaded from {path}")
+
+#         return obj
+
+
+# def _load_obj(path: str, file_type: str):
+#     if file_type[0] != ".":
+#         file_type = "." + file_type
+
+#     with open(path, "rb") as f:  # , encoding="utf-8-sig"
+#         if file_type in [".pickle", ".pkl", "p"]:
+#             return pickle.load(f)
+
+#         elif file_type == ".json":
+#             return json.load(f)
+
+#         elif file_type == ".jsonl":
+#             json_list = list(f)
+#             jsons = []
+#             for json_str in json_list:
+#                 line = json.loads(json_str)  # 문자열을 읽을때는 loads
+#                 jsons.append(line)
+#             return jsons
+
+#         if file_type == ".plain":
+#             lines = f.read().splitlines()
+#             return lines
+
+
+# def save_obj(collection: Collection, path: str):
+#     # If path designate dir, make it as file path(file name as collection var name)
+#     _, file_extension = os.path.splitext(os.path.basename(path))
+#     if file_extension == "":
+#         path = f"{path}/{argname(collection)}.pkl"
+#         file_extension = ".pkl"
+
+#     # Make dirs
+#     dir_path = os.path.dirname(os.path.abspath(path))
+#     os.makedirs(dir_path, exist_ok=True)
+
+#     if file_extension in ["pickle", "pkl", "p"]:
+#         with open(path, "wb") as f:
+#             pickle.dump(collection, f)
+
+#     else:
+#         with open(path, "w") as f:
+#             if file_extension == "jsonl":
+#                 for item in collection:
+#                     json.dump(item, f, ensure_ascii=False)
+#                     f.write("\n")
+
+#             else:  # txt ...
+#                 f.write("\n".join(collection))
+
+#     print(f"Save to {path}")
+
+
 def load_obj(path: str, file_type: str = None):
     """[summary]
     추가 개발할 것
     - 로드된 obj에 종류를 알고, 여러개일 떄 하나로 합쳐서 반환하기
     - 멀티프로세싱 적용
     """
+    path = os.path.abspath(path)  # 이거 안하면 os.path.isdir나 os.path.isfile 이 작동안함;
     if os.path.isdir(path):
         file_paths = glob.glob(path)
 
@@ -123,9 +213,13 @@ def _load_obj(path: str, file_type: str):
 
 
 def save_obj(collection: Collection, path: str):
+
     # If path designate dir, make it as file path(file name as collection var name)
     _, file_extension = os.path.splitext(os.path.basename(path))
+    # print(file_extension)
     if file_extension == "":
+        from varname import argname
+
         path = f"{path}/{argname(collection)}.pkl"
         file_extension = ".pkl"
 
@@ -133,18 +227,23 @@ def save_obj(collection: Collection, path: str):
     dir_path = os.path.dirname(os.path.abspath(path))
     os.makedirs(dir_path, exist_ok=True)
 
-    if file_extension in ["pickle", "pkl", "p"]:
+    if file_extension in [".pickle", ".pkl", ".p"]:
         with open(path, "wb") as f:
             pickle.dump(collection, f)
 
     else:
-        with open(path, "w") as f:
-            if file_extension == "jsonl":
-                for item in collection:
-                    json.dump(item, f, ensure_ascii=False)
-                    f.write("\n")
+        from numpyencoder import (
+            NumpyEncoder,
+        )  # TypeError: Object of type int64 is not JSON serializab
 
-            else:  # txt ...
-                f.write("\n".join(collection))
+        with open(path, "w") as f:
+            f.write(json.dumps(collection, cls=NumpyEncoder, indent=4, ensure_ascii=False))
+            # if file_extension == ".jsonl":
+            #     for item in collection:
+            #         json.dump(item, f, ensure_ascii=False)
+            #         f.write("\n")
+
+            # else:  # txt ...
+            #     f.write("\n".join(collection))
 
     print(f"Save to {path}")

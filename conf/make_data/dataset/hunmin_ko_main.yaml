@@ -1,0 +1,13 @@
+dataset_name: hunmin_ko_main
+src_name: text
+tgt_name: summary
+
+
+text:
+  name: text
+  type: str_list
+  do_cleaning: True
+summary:
+  name: summary
+  type: str
+is_informal: False

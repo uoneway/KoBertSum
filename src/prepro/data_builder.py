@@ -26,11 +26,11 @@ from transformers import BertTokenizerFast, ElectraTokenizerFast
 from prepro.tokenization_kobert import KoBertTokenizer
 
 from prepro.preprocessor_kr import pre_remove_noise
-from prepro.utils import _get_word_ngrams, make_or_initial_dir, get_subdata_group, load_obj, save_obj
+from prepro.utils import _get_word_ngrams, make_or_initial_dir, get_subdata_group
 from others.utils import clean
 from others.rouge_metric import Rouge
 from others.logging import logger
-import base
+from others import base
 
 tqdm.pandas()
 # morpher = mecab.MeCab()
@@ -147,7 +147,10 @@ def tokenize(args):
         "-outputDirectory",
         tokenized_stories_dir,
     ]
-    print("Tokenizing %i files in %s and saving in %s..." % (len(stories), stories_dir, tokenized_stories_dir))
+    print(
+        "Tokenizing %i files in %s and saving in %s..."
+        % (len(stories), stories_dir, tokenized_stories_dir)
+    )
     subprocess.call(command)
     print("Stanford CoreNLP Tokenizer has finished.")
     os.remove("mapping_for_corenlp.txt")
@@ -345,9 +348,13 @@ class BertData:
             "kykim/electra-kor-base",
         ]:
             if args.model_name == "kykim/electra-kor-base":
-                self.tokenizer = ElectraTokenizerFast.from_pretrained(args.model_name, do_lower_case=True)
+                self.tokenizer = ElectraTokenizerFast.from_pretrained(
+                    args.model_name, do_lower_case=True
+                )
             else:
-                self.tokenizer = BertTokenizerFast.from_pretrained(args.model_name, do_lower_case=True)
+                self.tokenizer = BertTokenizerFast.from_pretrained(
+                    args.model_name, do_lower_case=True
+                )
             self.sep_token = "[SEP]"
             self.cls_token = "[CLS]"
             self.pad_token = "[PAD]"
@@ -408,7 +415,9 @@ class BertData:
         tgt_subtokens_str = (
             self.tgt_bos
             + " "
-            + f" {self.tgt_sent_split} ".join([" ".join(self.tokenizer.tokenize(" ".join(tt))) for tt in tgt])
+            + f" {self.tgt_sent_split} ".join(
+                [" ".join(self.tokenizer.tokenize(" ".join(tt))) for tt in tgt]
+            )
             + " "
             + self.tgt_eos
         )
@@ -595,7 +604,9 @@ def format_xsum_to_lines(args):
     else:
         datasets = ["train", "test", "valid"]
 
-    corpus_mapping = json.load(open(pjoin(args.raw_path, "XSum-TRAINING-DEV-TEST-SPLIT-90-5-5.json")))
+    corpus_mapping = json.load(
+        open(pjoin(args.raw_path, "XSum-TRAINING-DEV-TEST-SPLIT-90-5-5.json"))
+    )
 
     for corpus_type in datasets:
         mapped_fnames = corpus_mapping[corpus_type]
@@ -720,7 +731,9 @@ def format_df_to_bert(cfg):
 
             df[text.name] = pd.Series(
                 kr_sent_spliter(
-                    list(df[text.name].values), use_heuristic=cfg.dataset.is_informal, num_workers=cfg.n_cpus
+                    list(df[text.name].values),
+                    use_heuristic=cfg.dataset.is_informal,
+                    num_workers=cfg.n_cpus,
                 )
             )
 
@@ -729,12 +742,16 @@ def format_df_to_bert(cfg):
 
             df[summary.name] = pd.Series(
                 kr_sent_spliter(
-                    list(df[summary.name].values), use_heuristic=cfg.dataset.is_informal, num_workers=cfg.n_cpus
+                    list(df[summary.name].values),
+                    use_heuristic=cfg.dataset.is_informal,
+                    num_workers=cfg.n_cpus,
                 )
             )
 
         # df to json file
-        format_df_to_json(df, text.name, summary.name, summary.type, dirs.json, subdata_group=subdata_group)
+        format_df_to_json(
+            df, text.name, summary.name, summary.type, dirs.json, subdata_group=subdata_group
+        )
 
         # json to bert.pt files
         # base_path = os.getcwd()
